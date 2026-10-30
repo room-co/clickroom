@@ -38,6 +38,10 @@ jobs:
     # and fall back to `redis://127.0.0.1:6380` — port 6380, matching docker-compose, NOT the
     # default 6379. Without this service they fail with "Connection refused (os error 111)",
     # which is what made every CI run red while everything passed locally under `make infra:up`.
+    #
+    # Likewise `support::store::db_tests::*` need Postgres (Prisma schema migrated), Redis and a
+    # NATS connection (AppState bundles all three). Ports mirror docker-compose.yml (pg 5433,
+    # redis 6380, nats 4222) because ingest's tests hardcode them.
     services:
       redis:
         image: redis:7-alpine
@@ -48,8 +52,43 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: clickroom
+          POSTGRES_PASSWORD: clickroom
+          POSTGRES_DB: clickroom
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U clickroom -d clickroom"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://clickroom:clickroom@localhost:5433/clickroom?schema=public
+      REDIS_URL: redis://localhost:6380
+      NATS_URL: nats://localhost:4222
     steps:
       - uses: actions/checkout@v5
+      # Service containers cannot take a command, and NATS needs `-js` (JetStream).
+      - name: Start NATS (JetStream)
+        run: |
+          docker run -d --name nats -p 4222:4222 nats:latest -js
+          for i in $(seq 1 30); do (echo > /dev/tcp/127.0.0.1/4222) 2>/dev/null && exit 0; sleep 1; done
+          docker logs nats; exit 1
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Migrate Postgres (Prisma)
+        run: |
+          pnpm --filter @clickroom/db prisma:generate
+          pnpm --filter @clickroom/db exec prisma migrate deploy
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
