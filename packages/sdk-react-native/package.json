@@ -1,6 +1,6 @@
 {
   "name": "@clickroom/sdk-react-native",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React Native SDK for Clickroom — product analytics and feature flags for mobile apps.",
   "license": "MIT",
   "homepage": "https://github.com/room-co/clickroom/tree/main/packages/sdk-react-native#readme",

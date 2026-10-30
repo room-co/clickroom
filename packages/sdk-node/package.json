@@ -1,6 +1,6 @@
 {
   "name": "@clickroom/sdk-node",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Node.js server SDK for Clickroom — product analytics, feature flags and experiments.",
   "license": "MIT",
   "homepage": "https://github.com/room-co/clickroom/tree/main/packages/sdk-node#readme",

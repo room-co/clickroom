@@ -20,7 +20,7 @@ const LIB_NAME = 'clickroom-react-native'
 // Stamped on every event as `$lib_version` — keep in lockstep with package.json's `version`
 // (see CLAUDE.md's sdk-js release note for why a drift here is dangerous: it shipped once,
 // stamping a stale version made every event from that release look like a mystery third client).
-export const LIB_VERSION = '0.1.0'
+export const LIB_VERSION = '0.2.0'
 
 const DID_KEY = 'ckrm_did'
 const STORAGE_PREFIX = 'ckrm_'
