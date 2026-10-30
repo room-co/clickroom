@@ -6,8 +6,10 @@ on:
       - 'sdk-v*'
   workflow_dispatch:
 
-# `id-token: write` lets npm attach a signed provenance statement (--provenance) tying each
-# tarball to this workflow run.
+# npm Trusted Publishing (OIDC): no stored npm token. `id-token: write` lets npm exchange this
+# run's OIDC identity for a short-lived publish credential, and also signs the provenance
+# statement. Requires room-co/clickroom + `publish.yml` registered as a trusted publisher on
+# npmjs.com for each package (no environment).
 permissions:
   contents: read
   id-token: write
@@ -27,7 +29,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          registry-url: https://registry.npmjs.org
+          # No registry-url: that makes setup-node write an .npmrc with a NODE_AUTH_TOKEN
+          # placeholder, which can shadow the OIDC exchange. npm defaults to registry.npmjs.org.
+      # Trusted publishing needs npm >= 11.5.1 (and Node >= 22.14).
+      - run: npm install -g npm@^11.5.1
+      - run: npm --version
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @clickroom/sdk-js build
@@ -38,10 +44,11 @@ jobs:
           if npm view "@clickroom/sdk-js@$version" version >/dev/null 2>&1; then
             echo "@clickroom/sdk-js@$version already published, skipping"
           else
-            pnpm --filter @clickroom/sdk-js publish --access public --no-git-checks --provenance
+            # pnpm pack rewrites workspace:* to the real version; npm publishes the tarball via OIDC.
+            dest=$(mktemp -d)
+            (cd packages/sdk-js && pnpm pack --pack-destination "$dest")
+            npm publish "$dest"/*.tgz --access public --provenance
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # sdk-node depends on sdk-js via workspace:*, which pnpm rewrites to the exact
       # version above — so it can only be published after sdk-js is on the registry.
@@ -53,10 +60,11 @@ jobs:
           if npm view "@clickroom/sdk-node@$version" version >/dev/null 2>&1; then
             echo "@clickroom/sdk-node@$version already published, skipping"
           else
-            pnpm --filter @clickroom/sdk-node publish --access public --no-git-checks --provenance
+            # pnpm pack rewrites workspace:* to the real version; npm publishes the tarball via OIDC.
+            dest=$(mktemp -d)
+            (cd packages/sdk-node && pnpm pack --pack-destination "$dest")
+            npm publish "$dest"/*.tgz --access public --provenance
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       # sdk-react-native depends on sdk-js via workspace:*, which pnpm rewrites to the exact
       # version above — so it can only be published after sdk-js is on the registry.
@@ -68,7 +76,8 @@ jobs:
           if npm view "@clickroom/sdk-react-native@$version" version >/dev/null 2>&1; then
             echo "@clickroom/sdk-react-native@$version already published, skipping"
           else
-            pnpm --filter @clickroom/sdk-react-native publish --access public --no-git-checks --provenance
+            # pnpm pack rewrites workspace:* to the real version; npm publishes the tarball via OIDC.
+            dest=$(mktemp -d)
+            (cd packages/sdk-react-native && pnpm pack --pack-destination "$dest")
+            npm publish "$dest"/*.tgz --access public --provenance
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
