@@ -1,0 +1,27 @@
+Clickroom
+Copyright (c) 2026 Clickroom contributors
+
+This product is licensed under the GNU Affero General Public License v3.0
+(see LICENSE), except for the client SDKs, which are licensed under the MIT
+License (see the LICENSE file in each of):
+
+  packages/sdk-js
+  packages/sdk-node
+  packages/sdk-react-native
+
+"Clickroom" and the Clickroom logo are trademarks; see TRADEMARK.md.
+Contributions are accepted under the CLA described in CLA.md.
+
+Third-party software
+--------------------
+Clickroom depends on open-source packages distributed under their own licenses.
+A current inventory is generated from the lockfiles rather than maintained by
+hand:
+
+  pnpm licenses list --prod          # JavaScript / TypeScript dependencies
+  cargo deny check licenses          # Rust dependencies (policy: deny.toml)
+
+Third-party brand names and logos shown in the dashboard (for example the
+Claude, Cursor and Codex marks used to label MCP client setup instructions)
+remain the property of their respective owners and are used only to identify
+those products. They are not covered by this project's license.

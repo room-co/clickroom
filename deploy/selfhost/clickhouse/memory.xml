@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<!--
+  Self-host ClickHouse server limits (mounted into /etc/clickhouse-server/config.d/).
+  RATIO-based rather than absolute byte counts, which would starve (or OOM) any
+  machine other than the one they were sized for. ClickHouse may use 60% of the RAM it sees, leaving the rest for Postgres, NATS,
+  Redis, Garage and the Node/Rust services on the same VM.
+-->
+<clickhouse>
+  <max_server_memory_usage_to_ram_ratio>0.6</max_server_memory_usage_to_ram_ratio>
+
+  <!-- Trimmed from CH defaults (sized for big boxes). -->
+  <mark_cache_size>268435456</mark_cache_size>
+  <uncompressed_cache_size>0</uncompressed_cache_size>
+
+  <!-- A single runaway dashboard query must not take the whole server budget.
+       User-level setting: must live under profiles/default, not at top level. -->
+  <profiles>
+    <default>
+      <max_memory_usage>3221225472</max_memory_usage>
+    </default>
+  </profiles>
+</clickhouse>

@@ -1,0 +1,89 @@
+@import 'tailwindcss' source(none);
+@source '../**/*.{js,ts,jsx,tsx}';
+
+/*
+ * apps/admin design tokens — a dark-only palette, deliberately
+ * distinct from apps/web/src/styles/theme.css. This is an internal operator
+ * surface (cross-tenant org data, impersonation, destructive mutations), not
+ * the customer-facing dashboard, so it should never visually resemble it.
+ *
+ * Token names follow the standard shadcn/ui "new-york" convention
+ * (--background/--card/--primary/... under `@theme`) rather than apps/web's
+ * light+dark `.dark`-class toggle — there is only one theme here, so the
+ * values live directly on `:root`.
+ */
+@theme {
+  --color-background: #08090b;
+  --color-foreground: #e4e6ea;
+  --color-card: #101215;
+  --color-card-foreground: #e4e6ea;
+  --color-popover: #14171b;
+  --color-popover-foreground: #e4e6ea;
+
+  /* Amber primary — reads as "operator / handle with care", distinct from
+     apps/web's teal (#2DD4BF). */
+  --color-primary: #f5a524;
+  --color-primary-foreground: #1a1204;
+
+  --color-secondary: #1c2027;
+  --color-secondary-foreground: #e4e6ea;
+  --color-muted: #15181c;
+  --color-muted-foreground: #8b93a1;
+  --color-accent: #1e2530;
+  --color-accent-foreground: #f5a524;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #23272e;
+  --color-input: #23272e;
+  --color-ring: #f5a524;
+
+  /* Category tones for the audit log: destructive / billing /
+     impersonation / routine. */
+  --color-tone-destructive: #f87171;
+  --color-tone-billing: #7dd3fc;
+  --color-tone-impersonation: #c084fc;
+  --color-tone-routine: #a8aeb5;
+
+  --color-sidebar: #0a0b0d;
+  --color-sidebar-foreground: #e4e6ea;
+  --color-sidebar-primary: #f5a524;
+  --color-sidebar-primary-foreground: #1a1204;
+  --color-sidebar-accent: #1c2027;
+  --color-sidebar-accent-foreground: #e4e6ea;
+  --color-sidebar-border: #1a1d22;
+  --color-sidebar-ring: #f5a524;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}

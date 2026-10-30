@@ -1,0 +1,1008 @@
+// Clickroom MVP — Postgres config store.
+// IDs are ULID strings supplied by the app (newId()); no db-level default.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: the connection `url` lives in prisma.config.ts (datasource.url),
+// not here. The runtime client connects via a driver adapter (see src/client.ts).
+datasource db {
+  provider = "postgresql"
+}
+
+// ── 2.1 Identity & tenancy ────────────────────────────────────────────────
+
+model Org {
+  id                           String          @id
+  name                         String
+  slug                         String          @unique
+  planId                       String?
+  maxSeatsOverride             Int?
+  maxFlagsOverride             Int?
+  maxEventsPerMonthOverride    BigInt?
+  maxFlagCallsPerMonthOverride BigInt?
+  overagePolicy                OveragePolicy   @default(block)
+  // Set by admin.orgs.suspendOrg / cleared by unsuspendOrg.
+  suspendedAt                  DateTime?
+  suspensionReason             String?
+  ai_settings                  Json            @default("{}")
+  createdAt                    DateTime        @default(now())
+  updatedAt                    DateTime        @updatedAt
+  members                      OrgMembership[]
+  projects                     Project[]
+  invites                      OrgInvite[]
+  plan                         Plan?           @relation(fields: [planId], references: [id])
+  ssoConnection                SsoConnection?
+  domains                      OrgDomain[]
+
+  @@index([planId])
+}
+
+// Ask AI conversation persistence. Client sends only the latest
+// message each turn; server rebuilds full history from these rows.
+model AiConversation {
+  id         String      @id // ULID
+  project_id String
+  user_id    String
+  title      String?
+  created_at DateTime    @default(now())
+  updated_at DateTime    @updatedAt
+  deleted_at DateTime?
+  messages   AiMessage[]
+
+  @@index([project_id, user_id, updated_at])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id              String         @id // ULID
+  conversation_id String
+  role            String // 'user' | 'assistant' | 'system' | 'tool'
+  parts           Json
+  tool_calls      Json?
+  created_at      DateTime       @default(now())
+  conversation    AiConversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+
+  @@index([conversation_id, created_at])
+  @@map("ai_conversations_messages")
+}
+
+// Overlimit policy for monthly metered quotas (events, flag-evals).
+// `block` (default): hard-block over-limit traffic, today's behavior.
+// `allow`: accept over-limit traffic and record overage until the monthly reset.
+enum OveragePolicy {
+  block
+  allow
+}
+
+// Plan tiers table — usage tracking + quotas). Per-org override
+// columns on `Org` win over the plan's values (see `effectiveLimits` in
+// `src/limits.ts`); this table is only the default tier.
+model Plan {
+  id                   String   @id
+  key                  String   @unique
+  name                 String
+  maxSeats             Int
+  maxFlags             Int
+  maxEventsPerMonth    BigInt
+  maxFlagCallsPerMonth BigInt
+  /// May an org on this plan set `overagePolicy = allow` itself (accept + bill
+  /// traffic past the monthly caps)? Defaults to FALSE so a new tier has to opt
+  /// in explicitly — a plan must earn the entitlement, never inherit it.
+  allowsOverage        Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  orgs                 Org[]
+}
+
+model User {
+  id            String            @id
+  email         String            @unique
+  // Nullable — SSO-only (JIT-provisioned) users have no password.
+  passwordHash  String?
+  name          String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  memberships   OrgMembership[]
+  sessions      Session[]
+  flagAudits    FlagAudit[]
+  sentInvites   OrgInvite[]       @relation("SentInvites")
+  apiKeys       ApiKey[]
+  ssoIdentities UserSsoIdentity[]
+}
+
+model OrgMembership {
+  id        String   @id
+  orgId     String
+  userId    String
+  role      OrgRole  @default(member)
+  createdAt DateTime @default(now())
+  org       Org      @relation(fields: [orgId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([orgId, userId])
+  @@index([orgId])
+}
+
+enum OrgRole {
+  org_admin
+  member
+  viewer
+}
+
+// SSO. Ported from the reference implementation's SsoProtocol; Clickroom supports the
+// same two protocols.
+enum SsoProtocol {
+  saml
+  oidc
+}
+
+// SSO. Ported from the reference implementation's SsoMappingTarget, minus the `team`
+// variant: Clickroom's tenancy is Org → Project only (no Team model), so
+// every group mapping resolves to an OrgRole.
+enum SsoMappingTarget {
+  org_role
+}
+
+// Token-based invite to join an org (D-… member invitation flow, ported from
+// the reference implementation). Public accept flow reads/writes this via the unscoped `prisma`
+// client (identity-plane access predates org context, same as User/Session).
+model OrgInvite {
+  id             String    @id
+  orgId          String
+  email          String
+  role           OrgRole   @default(member)
+  token          String    @unique
+  invitedBy      String
+  acceptedAt     DateTime?
+  expiresAt      DateTime
+  failedAttempts Int       @default(0)
+  invalidatedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  org            Org       @relation(fields: [orgId], references: [id])
+  inviter        User      @relation("SentInvites", fields: [invitedBy], references: [id])
+
+  @@index([orgId])
+  @@index([email])
+}
+
+model Session {
+  id                     String         @id
+  userId                 String
+  refreshTokenHash       String
+  refreshTokenSelector   String?
+  activeOrgId            String?
+  // SSO provenance: 'password' | 'sso' (null for pre-existing
+  // sessions minted before this phase).
+  authMethod             String?
+  ssoConnectionId        String?
+  expiresAt              DateTime
+  createdAt              DateTime       @default(now())
+  // Set when this session was minted by admin.impersonate.start.
+  impersonatedByAdminId  String?
+  impersonationExpiresAt DateTime?
+  user                   User           @relation(fields: [userId], references: [id])
+  ssoConnection          SsoConnection? @relation(fields: [ssoConnectionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([refreshTokenSelector])
+}
+
+// ── 2.1.a SSO ───────────────────────────────────────────────────
+// Ported from the reference implementation's Sso* models (packages/db/prisma/schema.prisma), minus
+// Team/team_role — Clickroom's tenancy is Org → Project only, so group
+// mappings resolve straight to an OrgRole.
+
+// One SSO connection per org — an org_admin configures at most one IdP
+// (SAML or OIDC) at /settings/sso.
+model SsoConnection {
+  id                       String            @id
+  orgId                    String            @unique
+  protocol                 SsoProtocol
+  displayName              String
+  enabled                  Boolean           @default(false)
+  enforced                 Boolean           @default(false)
+  defaultOrgRole           OrgRole           @default(member)
+  attributeMapping         Json              @default("{}")
+  // AES-256-GCM-sealed blob (packages/auth secrets.ts) holding the OIDC
+  // client secret / SAML SP private key — never stored in the clear.
+  secretsEnvelope          Json
+  oidcIssuerUrl            String?
+  oidcClientId             String?
+  samlIdpEntityId          String?
+  samlIdpSsoUrl            String?
+  samlIdpX509Cert          String?
+  samlSpEntityId           String?
+  samlWantAssertionsSigned Boolean           @default(true)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  org                      Org               @relation(fields: [orgId], references: [id])
+  groupMappings            SsoGroupMapping[]
+  identities               UserSsoIdentity[]
+  sessions                 Session[]
+}
+
+// DNS-verified email domain owned by an org (email-first login discovery
+// routes a user's email domain to their org's SsoConnection).
+model OrgDomain {
+  id                String    @id
+  orgId             String
+  domain            String    @unique
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  org               Org       @relation(fields: [orgId], references: [id])
+
+  @@index([orgId])
+}
+
+// IdP group → OrgRole mapping, resolved monotonically (never downgrades an
+// existing member's role) on every SSO login.
+model SsoGroupMapping {
+  id              String           @id
+  ssoConnectionId String
+  idpGroup        String
+  target          SsoMappingTarget @default(org_role)
+  orgRole         OrgRole
+  createdAt       DateTime         @default(now())
+  ssoConnection   SsoConnection    @relation(fields: [ssoConnectionId], references: [id])
+
+  @@unique([ssoConnectionId, idpGroup])
+}
+
+// Links a User to the external IdP subject (externalId) that provisioned or
+// last authenticated them via a given SsoConnection.
+model UserSsoIdentity {
+  id              String        @id
+  userId          String
+  ssoConnectionId String
+  externalId      String
+  email           String
+  lastLoginAt     DateTime?
+  createdAt       DateTime      @default(now())
+  user            User          @relation(fields: [userId], references: [id])
+  ssoConnection   SsoConnection @relation(fields: [ssoConnectionId], references: [id])
+
+  @@unique([ssoConnectionId, externalId])
+  @@index([userId])
+}
+
+model Project {
+  id                String               @id
+  orgId             String
+  name              String
+  timezone          String               @default("UTC")
+  domain            String?
+  dataRetentionDays Int                  @default(90)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  org               Org                  @relation(fields: [orgId], references: [id])
+  apiKeys           ApiKey[]
+  flags             FeatureFlag[]
+  funnels           Funnel[]
+  savedQueries      SavedQuery[]
+  visualizations    SavedVisualization[]
+  environments      Environment[]
+  dataSources       DataSource[]
+  segments          Segment[]
+  segmentSnapshots  SegmentSnapshot[]
+  experiments       Experiment[]
+  insights          Insight[]
+  dashboardWidgets  DashboardWidget[]
+  surveys           Survey[]
+  supportForms      SupportForm[]
+  supportTickets    SupportTicket[]
+  supportWebhooks   SupportWebhook[]
+
+  @@index([orgId])
+}
+
+// ── 2.2 API keys ──────────────────────────────────────────────────────────
+
+model ApiKey {
+  id            String      @id
+  projectId     String
+  // Nullable — only set for project-pinned `ckmcp_` agent tokens,
+  // which resolve both a project and a specific acting user (their
+  // OrgMembership.role governs the request). write/read keys leave this null.
+  userId        String?
+  keyHash       String      @unique
+  keyPrefix     String
+  // Nullable, unique — the `<selector>` half of a `ckmcp_<selector>.<secret>`
+  // token. Lets the request-context middleware find the row in one
+  // indexed lookup before hashing the secret, instead of hashing every
+  // candidate. write/read tokens are looked up by `keyHash` directly and leave
+  // this null.
+  selector      String?     @unique
+  publicToken   String?
+  type          ApiKeyType
+  scopes        String[]    @default([])
+  environmentId String
+  label         String?
+  lastUsedAt    DateTime?
+  revokedAt     DateTime?
+  expiresAt     DateTime?
+  createdAt     DateTime    @default(now())
+  project       Project     @relation(fields: [projectId], references: [id])
+  environment   Environment @relation(fields: [environmentId], references: [id])
+  user          User?       @relation(fields: [userId], references: [id])
+
+  @@index([projectId])
+  @@index([userId])
+}
+
+enum ApiKeyType {
+  write
+  read
+  mcp
+}
+
+// ── 2.2.a MCP OAuth 2.1 authorization server ──────────────────
+//
+// Self-hosted OAuth 2.1 for the remote `/mcp` endpoint (Claude Desktop/Code
+// "Add custom connector" flow). Short-lived authorization codes are single-use
+// and TTL'd, so they live in Redis (see apps/api/src/mcp/oauth), not here.
+// Access tokens are stateless HS256 JWTs (packages/auth `issueMcpAccessToken`)
+// verified by request-context.middleware.ts — never persisted. Only durable
+// state — the dynamically-registered client and the long-lived refresh token
+// — needs a table.
+
+// A dynamically-registered (RFC 7591) MCP client, backing the SDK's
+// `OAuthRegisteredClientsStore` (`apps/api/src/mcp/oauth/client-store.ts`).
+// Global/no tenant column: a client app (e.g. Claude Desktop) is not owned by
+// one org, it's used BY many orgs' users, each of whom authorizes it against
+// their own org+project via `/authorize`.
+//
+// Public PKCE-only clients (mirrors the reference implementation's MCP OAuth
+// provider): `tokenEndpointAuthMethod` is always "none" and `clientSecretHash`
+// is always null — confidential-client support was dropped in the
+// `mcpAuthRouter` rewrite since every real MCP client
+// (Claude Desktop, Claude Code, mcp-remote, MCP Inspector) registers as a
+// public client anyway, and a bare `client_secret: null` in the DCR response
+// (rather than an omitted key) is exactly the bug that motivated this rewrite.
+model McpOAuthClient {
+  id                      String   @id
+  // Public identifier handed back to the client and sent on every
+  // /authorize + /token call. Distinct from `id` so it can be regenerated
+  // independent of the row's own PK scheme if ever needed.
+  clientId                String   @unique
+  clientName              String?
+  redirectUris            String[]
+  grantTypes              String[] @default([])
+  responseTypes           String[] @default([])
+  scope                   String?
+  tokenEndpointAuthMethod String   @default("none")
+  // Unused now that clients are always public (kept nullable, not dropped,
+  // so an existing row from the pre-rewrite hand-rolled controller doesn't
+  // need a backfill); always null for rows created by `client-store.ts`.
+  clientSecretHash        String?
+  createdAt               DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// A long-lived OAuth refresh token, minted alongside an access token on the
+// authorization_code and refresh_token grants. Looked up by `selector`
+// (O(1), like ApiKey), verified by Argon2id-hashing the presented token and
+// comparing to `tokenHash` (packages/auth `hashRefreshToken`/`verifyRefreshToken`
+// — the same helpers the web-session refresh token uses). Rotated on every
+// use (`/token` refresh_token grant marks the old row `revokedAt` and
+// inserts a new one) rather than reused, per OAuth 2.1 refresh-token rotation
+// guidance.
+model McpOAuthRefreshToken {
+  id        String    @id
+  selector  String    @unique
+  tokenHash String
+  clientId  String
+  userId    String
+  orgId     String
+  projectId String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([orgId])
+  @@index([projectId])
+  @@index([userId])
+  @@index([clientId])
+}
+
+// ── 2.2.1 Environments (per-project, custom) ──────────────────────────────
+
+model Environment {
+  id        String        @id
+  projectId String
+  key       String
+  name      String
+  color     String?
+  isDefault Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  project   Project       @relation(fields: [projectId], references: [id])
+  apiKeys   ApiKey[]
+  flags     FeatureFlag[]
+
+  @@unique([projectId, key])
+  @@index([projectId])
+}
+
+// ── 2.3 Feature flags ─────────────────────────────────────────────────────
+
+model FeatureFlag {
+  id            String        @id
+  projectId     String
+  key           String
+  name          String?
+  active        Boolean       @default(false)
+  // Gates the exposure write ($feature_flag_called) only — evaluation/quota are
+  // unaffected. Default false: manual/operational gates stay silent. Experiment
+  // creation forces true; while a running experiment references the flag it is
+  // pinned true . Read by the Rust evaluator's
+  // flat SELECT and carried in the flag blob.
+  track         Boolean       @default(false)
+  environmentId String
+  tags          String[]      @default([])
+  filters       Json
+  version       Int           @default(1)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+  project       Project       @relation(fields: [projectId], references: [id])
+  environment   Environment   @relation(fields: [environmentId], references: [id])
+  audits        FlagAudit[]
+  experiments   Experiment[]
+  surveys       Survey[]
+  supportForms  SupportForm[]
+
+  @@unique([projectId, key, environmentId])
+  @@index([projectId])
+}
+
+// Audit trail for flag mutations (create/update/toggle/delete) — also the
+// event source published over `flags:changed:<projectId>`. No
+// cascade delete on flagId: audit rows must survive flag deletion, which is
+// itself a soft-delete (FeatureFlag.deletedAt), so the FK is never exercised.
+model FlagAudit {
+  id          String          @id
+  flagId      String
+  projectId   String
+  action      FlagAuditAction
+  actorUserId String
+  diff        Json
+  version     Int
+  createdAt   DateTime        @default(now())
+  flag        FeatureFlag     @relation(fields: [flagId], references: [id])
+  actor       User            @relation(fields: [actorUserId], references: [id])
+
+  @@index([projectId, flagId, createdAt])
+}
+
+enum FlagAuditAction {
+  created
+  updated
+  toggled
+  deleted
+}
+
+// ── 2.3.1 Funnels ──────────────────────────────────────────────────────────
+
+model Funnel {
+  id        String    @id
+  projectId String
+  name      String
+  window    Int
+  steps     Json // FunnelStep[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  project   Project   @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+}
+
+// ── 2.3.1.1 Segments ────────────────────────────────────────────
+// SegmentDefinition is versioned JSON; see packages/clickhouse/src/queries.ts
+// for the compiled query builders (buildSegmentCount / buildSegmentMembers).
+
+model Segment {
+  id          String            @id
+  projectId   String
+  name        String
+  description String?
+  definition  Json
+  createdBy   String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  project     Project           @relation(fields: [projectId], references: [id])
+  snapshots   SegmentSnapshot[]
+
+  @@index([projectId])
+}
+
+model SegmentSnapshot {
+  id          String   @id
+  projectId   String
+  segmentId   String
+  memberCount Int
+  status      String // 'computing' | 'ready' | 'failed'
+  computedAt  DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id])
+  segment     Segment  @relation(fields: [segmentId], references: [id])
+
+  @@index([projectId])
+  @@index([segmentId])
+}
+
+// ── 2.3.1.2 Experiments ──────────────────────────────────────────
+// A/B testing on top of multivariate FeatureFlags: create() auto-creates a
+// linked flag (the flag IS the bucketing/exposure mechanism). Metrics are
+// versioned JSON (ExperimentMetric); results compute live from ClickHouse
+// (packages/clickhouse/src/queries.ts), no results table.
+
+model Experiment {
+  id                      String      @id
+  projectId               String
+  name                    String
+  description             String?
+  hypothesis              String?
+  featureFlagId           String
+  status                  String // 'draft' | 'running' | 'complete' | 'archived'
+  variants                Json // [{key, rolloutPercentage}] — mirrors the linked flag's multivariate config
+  primaryMetric           Json // ExperimentMetric, versioned
+  secondaryMetrics        Json // ExperimentMetric[]
+  exposureEvent           String      @default("$feature_flag_called")
+  minimumDetectableEffect Float?
+  startedAt               DateTime?
+  endedAt                 DateTime?
+  createdBy               String
+  createdAt               DateTime    @default(now())
+  updatedAt               DateTime    @updatedAt
+  deletedAt               DateTime?
+  project                 Project     @relation(fields: [projectId], references: [id])
+  featureFlag             FeatureFlag @relation(fields: [featureFlagId], references: [id])
+
+  @@index([projectId])
+  @@index([featureFlagId])
+}
+
+// ── 2.3.1.2.1 Surveys ────────────────────────────────────────────
+// In-product CSAT/CES/NPS + custom surveys. Mirrors the experiments pattern: a
+// survey owns a linked FeatureFlag (auto-created on create), which is the single
+// eligibility/rollout/segment mechanism. Config is versioned JSON `definition`
+// (questions/appearance/triggers); `version` bumps on every edit so the SDK can
+// cache. Responses land in ClickHouse as `$survey_*` events.
+
+model Survey {
+  id            String      @id
+  projectId     String
+  name          String
+  description   String?
+  status        String // 'draft' | 'active' | 'archived'
+  definition    Json
+  version       Int         @default(1)
+  featureFlagId String
+  createdBy     String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+  project       Project     @relation(fields: [projectId], references: [id])
+  featureFlag   FeatureFlag @relation(fields: [featureFlagId], references: [id])
+
+  @@index([projectId])
+}
+
+// ── 2.3.1.2.2 Support ────────────────────────────────────────────
+// Customer support forms + on-site widget + agent inbox. Mirrors the surveys
+// pattern: a form owns a linked FeatureFlag (auto-created on create), which is
+// the single eligibility/rollout/segment mechanism, and config is a versioned
+// JSON `definition` (channel/fields/appearance/tracking/routing/triggers) whose
+// `version` bumps on every edit so the SDK can cache.
+//
+// Unlike a survey response, a ticket is a mutable, threaded, assignable object,
+// so Postgres — not ClickHouse — is the source of truth for tickets and their
+// messages. ClickHouse additionally receives `$support_*` telemetry for
+// funnel/deflection analytics.
+
+model SupportForm {
+  id            String          @id
+  projectId     String
+  name          String
+  description   String?
+  status        String // 'draft' | 'active' | 'archived'
+  definition    Json
+  version       Int             @default(1)
+  featureFlagId String
+  createdBy     String
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+  project       Project         @relation(fields: [projectId], references: [id])
+  featureFlag   FeatureFlag     @relation(fields: [featureFlagId], references: [id])
+  tickets       SupportTicket[]
+
+  @@index([projectId])
+}
+
+model SupportTicket {
+  id             String                   @id
+  formId         String
+  projectId      String
+  // Per-project human ticket number (e.g. #4821). Allocated from a per-project
+  // counter inside the create transaction; unique per project.
+  number         Int
+  distinctId     String
+  personId       String?
+  status         String // 'open' | 'pending' | 'resolved' | 'closed'
+  priority       String
+  category       String
+  /// 'conversation' | 'bug' — the ticket discriminator (Insight `type` precedent).
+  type           String                   @default("conversation")
+  /// 'blocker' | 'major' | 'minor'. Bug-only; NULL on a conversation.
+  severity       String?
+  /// Typed bug payload (environment / consoleErrors / networkErrors). NULL for conversations
+  /// and for bugs filed without `tracking.bugContext`.
+  bugReport      Json?
+  subject        String
+  assigneeId     String?
+  // Opaque 32-byte random credential; the widget's only means of reading back
+  // its own ticket thread via GET /v1/support/tickets/:id.
+  token          String                   @unique
+  // Custom field answers, keyed by the definition's field ids.
+  fields         Json
+  // Identity, recent events, active flags and form-fill telemetry captured at
+  // submit time, per the form's `tracking` config.
+  context        Json
+  firstReplyAt   DateTime?
+  resolvedAt     DateTime?
+  csatScore      Int?
+  unreadForUser  Int                      @default(0)
+  unreadForAgent Int                      @default(0)
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  form           SupportForm              @relation(fields: [formId], references: [id])
+  project        Project                  @relation(fields: [projectId], references: [id])
+  messages       SupportTicketMessage[]
+  attachments    SupportAttachment[]
+  deliveries     SupportWebhookDelivery[]
+
+  @@unique([projectId, number])
+  @@index([projectId, status, createdAt])
+  @@index([projectId, type, status, createdAt])
+  @@index([formId])
+}
+
+model SupportTicketMessage {
+  id           String              @id
+  ticketId     String
+  authorType   String // 'user' | 'agent' | 'ai' | 'system'
+  authorUserId String?
+  body         String
+  createdAt    DateTime            @default(now())
+  ticket       SupportTicket       @relation(fields: [ticketId], references: [id])
+  attachments  SupportAttachment[]
+
+  @@index([ticketId, createdAt])
+}
+
+model SupportAttachment {
+  id          String                @id
+  ticketId    String?
+  messageId   String?
+  // S3 object key — always server-derived ({project}/{ticket}/{ulid}), never
+  // taken from the client filename.
+  key         String
+  filename    String
+  contentType String
+  sizeBytes   Int
+  createdAt   DateTime              @default(now())
+  ticket      SupportTicket?        @relation(fields: [ticketId], references: [id])
+  message     SupportTicketMessage? @relation(fields: [messageId], references: [id])
+}
+
+model SupportWebhook {
+  id                      String    @id
+  projectId               String
+  url                     String
+  /// Human label shown above the URL in the 6a list. Backfilled from the URL host.
+  name                    String    @default("")
+  // Encrypted at rest with encryptApiKey/decryptApiKey (packages/ai/src/crypto.ts).
+  secret                  String
+  /// Previous secret during a rotation grace window. Same encryptApiKey envelope as `secret`.
+  previousSecret          String?
+  secretRotatedAt         DateTime?
+  /// The grace window is DATA, not a constant: storing the instant means one writer and
+  /// no `secretRotatedAt + 24h` arithmetic duplicated across Rust and TS.
+  previousSecretExpiresAt DateTime?
+  /// Last 4 plaintext chars, for the `whsec_••••3f7a` mask. The control plane cannot
+  /// decrypt `secret` (constraint 7), so the mask is impossible without this.
+  secretHint              String?
+  /// Terminal deliveries failed in a row. Reset to 0 on any success. Drives auto-disable.
+  consecutiveFailures     Int       @default(0)
+  lastDeliveryAt          DateTime?
+  autoDisabledAt          DateTime?
+  events                  String[]  @default([])
+  active                  Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  deletedAt               DateTime?
+
+  project    Project                  @relation(fields: [projectId], references: [id])
+  deliveries SupportWebhookDelivery[]
+}
+
+model SupportWebhookDelivery {
+  id             String                  @id
+  webhookId      String
+  // Nullable so `webhooks.test` can enqueue a synthetic delivery that is not
+  // attached to a real ticket.
+  ticketId       String?
+  event          String
+  payload        Json
+  status         String // 'pending' | 'delivered' | 'failed'
+  attempts       Int                     @default(0)
+  lastError      String?
+  lastStatusCode Int?
+  nextAttemptAt  DateTime
+  /// `webhooks.sendTest` / `ping`. Excluded from the health rollup and from
+  /// `consecutiveFailures`, so hammering Send test at a broken staging URL cannot
+  /// auto-disable a production endpoint.
+  isTest         Boolean                 @default(false)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  webhook        SupportWebhook          @relation(fields: [webhookId], references: [id])
+  ticket         SupportTicket?          @relation(fields: [ticketId], references: [id])
+  attempts_      SupportWebhookAttempt[]
+
+  @@index([status, nextAttemptAt])
+}
+
+model SupportWebhookAttempt {
+  id              String    @id
+  deliveryId      String
+  /// Denormalized so the health rollup groups without joining the delivery.
+  webhookId       String
+  attempt         Int
+  startedAt       DateTime
+  /// Measured through response-body read, not just headers.
+  latencyMs       Int
+  /// NULL = no response at all (DNS, connect, timeout).
+  responseCode    Int?
+  /// 'delivered'|'retryable_http'|'rate_limited'|'fatal_http'|'network'|'timeout'|'crypto'
+  outcome         String
+  errorMessage    String?
+  requestHeaders  Json?
+  requestBody     String?
+  responseHeaders Json?
+  responseBody    String?
+  bodyTruncated   Boolean   @default(false)
+  /// Set by the retention job when the four body/header columns are nulled.
+  bodiesPurgedAt  DateTime?
+  createdAt       DateTime  @default(now())
+
+  delivery SupportWebhookDelivery @relation(fields: [deliveryId], references: [id])
+
+  @@unique([deliveryId, attempt])
+  @@index([webhookId, createdAt(sort: Desc)])
+  @@index([createdAt])
+}
+
+// ── 2.3.1.3 Insights ───────────────────────────────────────────
+
+model Insight {
+  id          String            @id
+  projectId   String
+  name        String
+  description String?
+  type        String // 'trend' | 'funnel' | 'retention' | 'users' | 'breakdown'
+  config      Json // InsightConfig, discriminated by `type`
+  tags        String[]          @default([])
+  isFavorite  Boolean           @default(false)
+  createdBy   String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  project     Project           @relation(fields: [projectId], references: [id])
+  widgets     DashboardWidget[]
+
+  @@index([projectId])
+}
+
+model DashboardWidget {
+  id        String    @id
+  projectId String
+  insightId String
+  x         Int       @default(0)
+  y         Int       @default(0)
+  w         Int       @default(4)
+  h         Int       @default(6)
+  rangeKey  String?
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  project   Project   @relation(fields: [projectId], references: [id])
+  insight   Insight   @relation(fields: [insightId], references: [id])
+
+  @@index([projectId])
+}
+
+// ── 2.3.2 SQL Explorer saved queries ───────────────────────────
+
+model SavedQuery {
+  id             String               @id
+  projectId      String
+  name           String
+  sql            String               @db.Text
+  createdBy      String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  deletedAt      DateTime?
+  project        Project              @relation(fields: [projectId], references: [id])
+  visualizations SavedVisualization[]
+
+  @@index([projectId])
+}
+
+// ── 2.3.3 SQL Explorer saved visualizations ──────────────────
+
+model SavedVisualization {
+  id           String     @id
+  projectId    String
+  savedQueryId String
+  name         String
+  config       Json
+  createdBy    String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deletedAt    DateTime?
+  project      Project    @relation(fields: [projectId], references: [id])
+  savedQuery   SavedQuery @relation(fields: [savedQueryId], references: [id])
+
+  @@index([projectId])
+  @@index([savedQueryId])
+}
+
+// ── 2.3.4 Data source registry ──────────────────────────────────
+
+model DataSource {
+  id        String    @id
+  projectId String
+  name      String
+  type      String
+  status    String    @default("connected")
+  isDefault Boolean   @default(false)
+  config    Json      @default("{}")
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  project   Project   @relation(fields: [projectId], references: [id])
+
+  @@index([projectId])
+}
+
+// ── 2.4 Taxonomy (auto-discovered) ───────────────────────────
+
+model EventDefinition {
+  id              String          @id
+  projectId       String
+  name            String
+  isSystem        Boolean         @default(false)
+  verified        Boolean         @default(false)
+  hidden          Boolean         @default(false)
+  description     String?
+  lastSeenAt      DateTime?
+  volume30d       BigInt          @default(0)
+  enforcementMode EnforcementMode @default(none)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model PropertyDefinition {
+  id           String        @id
+  projectId    String
+  name         String
+  scope        PropertyScope
+  propertyType PropertyType  @default(String)
+  typeLocked   Boolean       @default(false)
+  isNumerical  Boolean       @default(false)
+  verified     Boolean       @default(false)
+  hidden       Boolean       @default(false)
+  description  String?
+  lastSeenAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([projectId, name, scope])
+  @@index([projectId, scope])
+}
+
+enum PropertyScope {
+  event
+  person
+}
+
+enum PropertyType {
+  String
+  Numeric
+  Boolean
+  DateTime
+}
+
+enum EnforcementMode {
+  none
+  warn
+  strict
+}
+
+model EventProperty {
+  id           String  @id
+  projectId    String
+  eventName    String
+  propertyName String
+  required     Boolean @default(false)
+
+  @@unique([projectId, eventName, propertyName])
+  @@index([projectId, eventName])
+}
+
+// ── — internal admin console identity ──────────────────────────────
+// Fully decoupled from tenant User. Cross-tenant by design; security comes
+// from `adminProcedure`, not row scoping (see packages/db/src/scoped-client.ts).
+// Ported from the reference implementation's packages/db/prisma/schema.prisma:2558-2612.
+
+model AdminUser {
+  id           String    @id
+  email        String    @unique
+  passwordHash String
+  fullName     String    @default("")
+  isDisabled   Boolean   @default(false)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Mandatory TOTP for admin console.
+  totpSecretEnc    String?
+  totpPendingEnc   String?
+  totpEnrolledAt   DateTime?
+  totpLastStep     Int?
+  failedLoginCount Int       @default(0)
+  loginLockedAt    DateTime?
+
+  auditLogs     AdminAuditLog[]
+  recoveryCodes AdminRecoveryCode[]
+}
+
+// Cross-tenant audit log for admin-console mutations. Deliberately not a
+// tenant-scoped model — `targetOrgId` is a reference, not the tenant-scoping
+// `orgId` column, so it is not subject to scoped-client.ts's classification.
+model AdminAuditLog {
+  id          String    @id
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id])
+  action      String
+  targetOrgId String?
+  before      Json      @default("{}")
+  after       Json      @default("{}")
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId, createdAt(sort: Desc)])
+  @@index([targetOrgId, createdAt(sort: Desc)])
+}
+
+// One-time admin recovery codes. No orgId: global admin identity, like AdminAuditLog.
+model AdminRecoveryCode {
+  id          String    @id
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  codeIndex   String    @unique
+  codeHash    String
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminUserId, usedAt])
+}

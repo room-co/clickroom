@@ -1,0 +1,12 @@
+{
+  "extends": "@clickroom/config/tsconfig",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "moduleResolution": "Bundler",
+    "types": ["node", "@playwright/test"],
+    "noEmit": true,
+    "verbatimModuleSyntax": false,
+    "isolatedModules": false
+  },
+  "include": ["**/*.ts", "../playwright.config.ts"]
+}

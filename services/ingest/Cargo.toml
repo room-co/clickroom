@@ -1,0 +1,40 @@
+[package]
+name = "ingest"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ingest"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+async-nats = "0.49.1"
+reqwest = { version = "0.12.0", default-features = false, features = ["rustls-tls"] }
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde", "std"] }
+thiserror = "2.0.18"
+dotenvy = "0.15.7"
+futures = "0.3.32"
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres"] }
+redis = { version = "1.3.0", default-features = false, features = ["tokio-comp", "connection-manager", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+ulid = "1.2.0"
+uuid = { version = "1.23.4", features = ["v7"] }
+schema-validate = { path = "../schema-validate" }
+# Support webhook delivery worker: AES-256-GCM to decrypt the
+# per-webhook secret written by Node's `encryptApiKey`, HMAC-SHA256 to sign.
+aes-gcm = "0.10.3"
+base64 = "0.22.1"
+hmac = "0.13.0"
+sha2 = "0.11.0"
+hex = "0.4.3"
+# SSRF guard (`webhook_url.rs`): the outbound URL has to be parsed the
+# same way the client will resolve it, so parse it with the crate reqwest itself
+# uses rather than by hand.
+url = "2.5.8"

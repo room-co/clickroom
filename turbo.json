@@ -1,0 +1,48 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "globalDependencies": [".env", ".env.*"],
+  "globalEnv": ["NODE_ENV"],
+  "tasks": {
+    // `@clickroom/db` re-exports the generated Prisma client, so anything that compiles against
+    // it needs `prisma generate` to have run first. Locally that happens via `make infra:up`, so
+    // a fresh checkout (CI) was the only place it was missing — `@prisma/client` resolved to an
+    // empty stub and every `import { PrismaClient }` failed with TS2305. Wiring it as a task
+    // dependency means build/typecheck/test can't run without it, on any machine.
+    // Turbo skips this for packages that don't define the script.
+    //
+    // Not cached: Prisma 7 generates into pnpm's content-addressed store
+    // (`node_modules/.pnpm/@prisma+client@<ver>_<hash>/node_modules/@prisma/client`), a path that
+    // depends on the lockfile hash and so can't be declared as a stable `outputs` glob. Declaring
+    // one anyway makes turbo warn ("no output files found") and cache an empty artifact — which
+    // would then be "restored" over a missing client and reintroduce the exact TS2305 failure this
+    // task exists to prevent. It runs in ~300ms; always running it is the cheap, correct option.
+    "prisma:generate": {
+      "cache": false,
+      "outputs": []
+    },
+    "build": {
+      "dependsOn": ["^build", "prisma:generate"],
+      "outputs": ["dist/**", "build/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build", "prisma:generate"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build", "prisma:generate"],
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

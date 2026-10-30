@@ -1,0 +1,27 @@
+{
+  "name": "@clickroom/auth",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@clickroom/config": "workspace:*",
+    "@types/node": "^26.1.0",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "argon2": "^0.44.0",
+    "jose": "^6.2.3"
+  }
+}

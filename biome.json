@@ -1,0 +1,75 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+  "extends": ["./packages/config/biome.json"],
+  "files": {
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/build",
+      "!**/target",
+      "!**/node_modules",
+      "!**/apps/web/src/styles",
+      "!**/apps/web/src/components/ui",
+      "!**/apps/web/src/hooks/use-mobile.ts",
+      "!**/apps/admin/src/styles",
+      "!**/apps/admin/src/components/ui",
+      "!**/*.gen.ts",
+      "!**/*.svg"
+    ]
+  },
+  "overrides": [
+    {
+      "includes": [
+        "apps/api/src/**",
+        "services/**/*.ts",
+        "!**/*.test.ts",
+        "!**/*.spec.ts",
+        "!**/__tests__/**",
+        "!**/test/**"
+      ],
+      "plugins": ["./tools/biome/no-manual-tenant-scope.grit"]
+    },
+    {
+      "includes": ["apps/api/src/**"],
+      "javascript": {
+        "parser": {
+          "unsafeParameterDecoratorsEnabled": true
+        }
+      }
+    },
+    {
+      "includes": ["**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedImports": "off"
+          },
+          "a11y": {
+            "noSvgWithoutTitle": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/scripts/**", "tools/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noUndeclaredEnvVars": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.test.ts", "**/*.spec.ts", "**/__tests__/**", "**/test/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noNonNullAssertion": "off"
+          }
+        }
+      }
+    }
+  ]
+}

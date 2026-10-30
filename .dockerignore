@@ -1,0 +1,43 @@
+# Version control
+.git
+.gitignore
+
+# Node dependencies (installed fresh in Docker) / build outputs
+node_modules
+**/node_modules
+dist
+**/dist
+.turbo
+**/.turbo
+
+# Rust build artifacts (recompiled fresh in Docker; huge and host-arch-specific)
+target
+**/target
+
+# Local dev / secrets
+.env
+**/.env
+*.env.local
+**/.env.local
+
+# Test artifacts
+coverage
+**/coverage
+.e2e
+
+# Editor / OS
+.DS_Store
+**/.DS_Store
+.vscode
+.idea
+*.log
+
+# Docker
+**/Dockerfile*
+**/.dockerignore
+
+# Docs / specs (not needed at build or runtime)
+specs
+README.md
+CHANGELOG.md
+

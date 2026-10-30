@@ -1,0 +1,9 @@
+# Code owner for the public repo.
+*                       @edicury
+/.github/               @edicury
+/deploy/                @edicury
+/LICENSE                @edicury
+/TRADEMARK.md           @edicury
+/CLA.md                 @edicury
+/SECURITY.md            @edicury
+/packages/sdk-*/        @edicury

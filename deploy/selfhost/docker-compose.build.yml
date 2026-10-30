@@ -1,0 +1,20 @@
+# Build the images from a repo checkout instead of pulling them (CI smoke test, local hacking):
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml build
+# Context is the repo root (../..).
+services:
+  migrate:
+    build: { context: ../.., dockerfile: infra/docker/Dockerfile.migrate }
+  api:
+    build: { context: ../.., dockerfile: apps/api/Dockerfile }
+  capture:
+    build: { context: ../.., dockerfile: services/capture/Dockerfile }
+  ingest:
+    build: { context: ../.., dockerfile: services/ingest/Dockerfile }
+  query:
+    build: { context: ../.., dockerfile: services/query/Dockerfile }
+  web:
+    build: { context: ../.., dockerfile: apps/web/Dockerfile }
+  admin:
+    build: { context: ../.., dockerfile: apps/admin/Dockerfile }
+  cli:
+    build: { context: ../.., dockerfile: infra/docker/Dockerfile.migrate }

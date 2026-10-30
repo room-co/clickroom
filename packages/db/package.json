@@ -1,0 +1,49 @@
+{
+  "name": "@clickroom/db",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "tsx src/seed.ts",
+    "seed:plans": "tsx src/seed.plans.ts",
+    "seed:e2e": "tsx src/seed.e2e.ts",
+    "seed:dogfood": "tsx src/seed.dogfood.ts",
+    "set-org-plan": "tsx src/set-org-plan.ts",
+    "admin:create": "tsx src/admin-create.ts",
+    "user:reset-password": "tsx src/user-reset-password.cli.ts",
+    "admin:unlock": "tsx src/admin-unlock.ts",
+    "admin:2fa:reset": "tsx src/admin-2fa-reset.ts",
+    "test": "vitest run"
+  },
+  "prisma": {
+    "seed": "tsx src/seed.ts"
+  },
+  "devDependencies": {
+    "@clickroom/config": "workspace:*",
+    "@types/node": "^22.20.0",
+    "@types/pg": "^8.11.10",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ssm": "^3.983.0",
+    "@clickroom/auth": "workspace:^",
+    "@node-rs/argon2": "^2.0.2",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "pg": "^8.13.1",
+    "prisma": "^7.8.0",
+    "tsx": "^4.23.0",
+    "ulid": "^3.0.2"
+  }
+}

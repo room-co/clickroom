@@ -1,0 +1,9 @@
+{
+  "extends": "@clickroom/config/tsconfig",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node"]
+  },
+  "include": ["src"]
+}

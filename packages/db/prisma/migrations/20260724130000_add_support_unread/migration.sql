@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "SupportTicket" ADD COLUMN "unreadForUser" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "SupportTicket" ADD COLUMN "unreadForAgent" INTEGER NOT NULL DEFAULT 0;

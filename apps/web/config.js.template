@@ -1,0 +1,10 @@
+// Runtime config, rendered at container start:
+//   envsubst '${CLICKROOM_API_ORIGIN} ${CLICKROOM_CAPTURE_HOST} ${CLICKROOM_DEPLOYMENT} ${CLICKROOM_WRITE_KEY}' \
+//     < config.js.template > /usr/share/.../config.js
+// Empty string = same-origin / unset.
+window.__CLICKROOM_CONFIG__ = {
+  apiOrigin: "${CLICKROOM_API_ORIGIN}",
+  captureHost: "${CLICKROOM_CAPTURE_HOST}",
+  deployment: "${CLICKROOM_DEPLOYMENT}",
+  writeKey: "${CLICKROOM_WRITE_KEY}",
+}

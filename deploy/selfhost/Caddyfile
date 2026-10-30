@@ -1,0 +1,75 @@
+# Clickroom self-host edge. One public origin, path-routed:
+#
+#   /capture/*                  -> capture  (prefix stripped; SDK api_host = https://DOMAIN/capture)
+#   /trpc /flags/stream /ai /mcp /auth/sso /authorize /token /register /revoke /.well-known/*
+#                               -> api      (these live at the API's root; there is no /api prefix)
+#   /<S3_BUCKET>/*              -> garage   (presigned support-attachment PUT/GET; see below)
+#   everything else             -> web SPA
+#
+# CADDY_SITE_ADDRESS: a domain (automatic HTTPS) or `http://localhost` (plain HTTP, no TLS).
+# For a subdomain layout (app./capture./...) copy these blocks into one site block per host.
+#
+# S3 note: capture presigns URLs against S3_PUBLIC_ENDPOINT (= this origin) in path style, so the
+# browser requests https://DOMAIN/<bucket>/<key>. Garage verifies the signature over the exact path
+# and Host it receives, so we route the bucket path through UNCHANGED (no prefix stripping) and
+# Caddy preserves the Host header by default.
+
+{
+	# Admin API only on loopback inside the container (used by the healthcheck).
+	admin 127.0.0.1:2019
+
+	# Behind Cloudflare / a load balancer? Set CADDY_TRUSTED_PROXIES in .env to their CIDR ranges
+	# (space-separated) so the real client IP is taken from X-Forwarded-For. The default trusts nothing
+	# but loopback, i.e. Caddy uses the TCP peer address (right when clients connect directly).
+	servers {
+		trusted_proxies static {$CADDY_TRUSTED_PROXIES:127.0.0.1/32}
+	}
+}
+
+{$CADDY_SITE_ADDRESS:http://localhost} {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		-Server
+	}
+
+	handle_path /capture/* {
+		reverse_proxy capture:3001 {
+			flush_interval -1
+		}
+	}
+
+	@api path /trpc /trpc/* /flags/stream /ai /ai/* /mcp /mcp/* /auth/sso/* /authorize /token /register /revoke /.well-known/* /health /ready
+	handle @api {
+		reverse_proxy api:3000 {
+			flush_interval -1
+		}
+	}
+
+	@s3 path /{$S3_BUCKET:clickroom-attachments}/*
+	handle @s3 {
+		reverse_proxy garage:3900
+	}
+
+	handle {
+		reverse_proxy web:8080
+	}
+}
+
+# Optional admin console (compose profile `admin`). Own host so its cookies stay separate.
+# Inert by default: ADMIN_SITE_ADDRESS is the plain-HTTP http://admin.localhost, so Caddy never
+# requests a certificate for a hostname without a DNS record. `install.sh --with-admin` sets it to
+# admin.<your domain> (which then gets automatic HTTPS) and enables the profile.
+{$ADMIN_SITE_ADDRESS:http://admin.localhost} {
+	encode zstd gzip
+
+	@api path /trpc /trpc/* /health
+	handle @api {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		reverse_proxy admin:8080
+	}
+}

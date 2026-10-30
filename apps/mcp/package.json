@@ -1,0 +1,31 @@
+{
+  "name": "@clickroom/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "bin": {
+    "clickroom-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@clickroom/agent-tools": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@trpc/client": "^11.0.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@clickroom/config": "workspace:*",
+    "@clickroom/trpc-router": "workspace:*",
+    "@types/node": "22.20.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.0",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.9"
+  }
+}

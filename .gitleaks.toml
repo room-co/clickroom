@@ -1,0 +1,18 @@
+# gitleaks config — only fixtures reviewed 2026-10-30 are allowlisted; everything else still fails CI.
+title = "clickroom gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed non-secret fixtures: seeded local/e2e write keys, test JWT/Stripe-shaped strings, doc placeholders"
+paths = [
+  '''^\.env\.e2e$''',
+  '''^apps/web/e2e/helpers/env\.ts$''',
+  '''^packages/db/src/seed\.e2e\.ts$''',
+  '''^services/capture/src/auth\.rs$''',
+  '''^services/capture/src/support/bug\.rs$''',
+  '''^packages/sdk-js/src/__tests__/support-bug\.test\.ts$''',
+  '''^contracts/capture-api\.md$''',
+  '''^docs/(guides/getting-started|guides/troubleshooting-no-events|sdk/http-api|self-host/troubleshooting)\.md$''',
+]

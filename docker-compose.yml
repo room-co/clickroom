@@ -1,0 +1,105 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: clickroom-postgres
+    environment:
+      POSTGRES_USER: clickroom
+      POSTGRES_PASSWORD: clickroom
+      POSTGRES_DB: clickroom
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clickroom -d clickroom"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24-alpine
+    container_name: clickroom-clickhouse
+    environment:
+      CLICKHOUSE_USER: clickroom
+      CLICKHOUSE_PASSWORD: clickroom
+      CLICKHOUSE_DB: clickroom
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+
+  nats:
+    image: nats:latest
+    container_name: clickroom-nats
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    ports:
+      - "${NATS_PORT:-4222}:4222"
+      - "${NATS_MONITOR_PORT:-8222}:8222"
+    volumes:
+      - nats-data:/data
+    # No healthcheck: the official nats image is distroless (no wget/curl/shell).
+    # Readiness is the monitoring endpoint http://localhost:8222/healthz (checked out-of-band).
+
+  redis:
+    image: redis:7-alpine
+    container_name: clickroom-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # S3 stand-in for support-ticket attachments. Only `s3` is enabled — the rest of
+  # the stack is self-hosted, so LocalStack exists purely so the presign → browser PUT → agent
+  # GET path is exercisable locally instead of only in prod.
+  #
+  # The dev bucket is created by `make infra:up` (target `infra:s3`), not by an init hook, so
+  # the same command that migrates and seeds also provisions the bucket. Idempotent.
+  #
+  # Note the endpoint split the app needs (see .env.example): capture-rs signs with
+  # S3_ENDPOINT and the *browser* follows the URL, so the signed host has to be one the browser
+  # can resolve. Both are localhost:4567 here because services run on the host under `make up`;
+  # if capture ever moves into compose, S3_ENDPOINT becomes http://localstack:4566 (in-network,
+  # container port) while S3_PUBLIC_ENDPOINT must stay http://localhost:4567.
+  #
+  # Host port 4567, not 4566: a local LocalStack on 4566 may already be running, same reason
+  # postgres is on 5433 and redis on 6380 here.
+  localstack:
+    image: localstack/localstack:3.8
+    container_name: clickroom-localstack
+    ports:
+      - "4567:4566"
+    environment:
+      SERVICES: s3
+      DEBUG: 0
+      DEFAULT_REGION: us-east-1
+      LS_LOG: warn
+    volumes:
+      - localstack-data:/var/lib/localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  postgres-data:
+  clickhouse-data:
+  nats-data:
+  redis-data:
+  localstack-data:

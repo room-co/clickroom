@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>clickroom SDK demo</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        line-height: 1.5;
+      }
+      button,
+      a.btn {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem 0.25rem 0.25rem 0;
+        border: 1px solid #888;
+        border-radius: 6px;
+        background: #f4f4f5;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+      }
+      code {
+        background: #f0f0f0;
+        padding: 0.1rem 0.3rem;
+        border-radius: 4px;
+      }
+      fieldset {
+        margin: 1rem 0;
+      }
+      .note {
+        color: #555;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>clickroom SDK demo</h1>
+    <p class="note">
+      Loads the built CDN bundle from <code>../dist/clickroom.js</code> and calls
+      <code>clickroom.init(...)</code> with autocapture on. Open DevTools → Network and
+      filter for <code>/capture</code> to watch batched <code>202</code> responses. Reload or
+      navigate away to trigger the <code>beforeunload</code> beacon flush.
+    </p>
+
+    <h2>1. Autocapture clicks (<code>$autocapture</code>)</h2>
+    <button type="button" id="cta" data-ch-capture>Sign up</button>
+    <a id="link" class="btn" href="/pricing">Pricing</a>
+    <p class="note">Click either. Each should enqueue a <code>$autocapture</code> event.</p>
+
+    <h2>2. Form submit</h2>
+    <form id="signup" onsubmit="return false">
+      <input type="email" name="email" placeholder="you@example.com" />
+      <button type="submit" id="submit">Subscribe</button>
+    </form>
+
+    <h2>3. SPA navigation (<code>$pageview</code>)</h2>
+    <button type="button" id="nav-pricing" onclick="history.pushState({}, '', '/pricing')">
+      pushState → /pricing
+    </button>
+    <button type="button" id="nav-home" onclick="history.pushState({}, '', '/')">pushState → /</button>
+    <p class="note">
+      Each <code>history.pushState</code> should emit a <code>$pageview</code> when
+      <code>capture_pageview</code> is enabled.
+    </p>
+
+    <h2>4. Manual capture</h2>
+    <button type="button" id="manual" onclick="clickroom.capture('demo_manual', { source: 'demo' })">
+      clickroom.capture('demo_manual')
+    </button>
+    <button type="button" id="identify" onclick="clickroom.identify('demo-user-1', { plan: 'pro' })">
+      clickroom.identify('demo-user-1')
+    </button>
+    <button type="button" id="reset" onclick="clickroom.reset()">clickroom.reset()</button>
+
+    <h2>5. Surveys (<code>$survey_shown</code>)</h2>
+    <button type="button" id="trigger-survey">Trigger survey event</button>
+    <p class="note">
+      <code>init(..., { surveys: true })</code> warms the <code>/v1/surveys</code> config cache and
+      gates each survey on its linked flag. This button fires
+      <code>clickroom.capture('<span id="survey-event-name">incident_declared</span>')</code>, which
+      drives every event-triggered, eligible survey to mount its shadow-DOM popover
+      (<code>[data-clickroom-survey]</code>). Override the event name with
+      <code>?survey_event=&lt;name&gt;</code>. URL-match surveys mount on load/navigation instead.
+    </p>
+
+    <!-- Built CDN bundle. Run `pnpm --filter @clickroom/sdk-js build` first. -->
+    <script src="../dist/clickroom.js"></script>
+    <script>
+      // Write key + api_host come from the URL so no secret lives in source:
+      //   index.html?wk=ckw_live_xxx&host=http://localhost:3001
+      // Add &auto=1 to self-drive every interaction (headless verification).
+      const params = new URLSearchParams(location.search)
+      const writeKey = params.get('wk') || 'ckw_live_demo'
+      const apiHost = params.get('host') || 'http://localhost:3001'
+      // The custom event that drives event-triggered surveys. Deterministic so a
+      // headless smoke test can wire a survey's `triggers.events` to the same name.
+      const surveyEvent = params.get('survey_event') || 'incident_declared'
+      document.getElementById('survey-event-name').textContent = surveyEvent
+
+      clickroom.init(writeKey, {
+        api_host: apiHost,
+        autocapture: true,
+        capture_pageview: true,
+        // Opt into survey delivery: fetch /v1/surveys, gate on the linked flag,
+        // and mount the shadow-DOM popover for triggered + eligible surveys.
+        surveys: true,
+      })
+
+      // Fire the survey trigger event on demand (button click).
+      document
+        .getElementById('trigger-survey')
+        .addEventListener('click', () => clickroom.capture(surveyEvent))
+
+      if (params.get('auto') === '1') {
+        // Fire real DOM events so autocapture listeners run in a real browser.
+        const fireClick = (el) =>
+          el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+        window.addEventListener('load', () => {
+          try {
+            fireClick(document.getElementById('cta')) // $autocapture (button)
+            const link = document.getElementById('link')
+            link.addEventListener('click', (e) => e.preventDefault()) // don't navigate away
+            fireClick(link) // $autocapture (anchor, elements_chain href)
+            document
+              .getElementById('signup')
+              .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })) // $autocapture (submit)
+            history.pushState({}, '', '/pricing') // $pageview (SPA)
+            history.pushState({}, '', '/') // $pageview (SPA)
+            clickroom.capture('demo_manual', { source: 'auto' }) // custom
+            clickroom.identify('demo-user-1', { plan: 'pro' }) // $identify
+            // Drive event-triggered surveys: only when explicitly asked via
+            // `?survey_event=…`, so the default auto-drive doesn't depend on any
+            // survey being configured. Flags load async, so a survey's linked-flag
+            // eligibility check may not be ready on the first tick — the smoke test
+            // fires this itself after awaiting the flag; here it's best-effort.
+            if (params.get('survey_event')) clickroom.capture(surveyEvent)
+            // Force a flush now instead of waiting for the 3s interval.
+            document.dispatchEvent(new Event('visibilitychange'))
+          } catch (err) {
+            console.error('auto-drive error', err)
+          }
+        })
+      }
+    </script>
+  </body>
+</html>

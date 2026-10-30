@@ -1,0 +1,53 @@
+// Bans hand-written `orgId` / `projectId` filters inside a Prisma `where` clause
+// on the request-scoped Prisma client.
+//
+// Tenant isolation is owned by the scoped Prisma client (`createScopedClient`,
+// packages/db/src/scoped-client.ts), exposed on the request context. It
+// auto-injects `orgId` for every model in ORG_TENANT_MODELS and `projectId` for
+// every model in PROJECT_TENANT_MODELS. Re-filtering by hand is at best
+// redundant and at worst hides a model that was never registered for
+// auto-scoping — the default-open cross-tenant leak the DMMF completeness test
+// (packages/db/src/scoped-models.test.ts) exists to prevent.
+//
+// Scope: only flags calls on the always-scoped request client
+// (`ctx.db` / `ctx.prisma` / `ctx.scopedPrisma`) — never the unscoped singleton
+// `prisma` used by seed, workers, auth and admin, which MUST filter by hand.
+// Only read/write `where` clauses are flagged (not `create` / `upsert` data,
+// which MUST set the tenant column). A where assembled into a separate variable
+// is not caught — the DMMF completeness test is the authoritative guard; this
+// rule is the fast in-editor feedback.
+//
+// If the model is genuinely not auto-scoped (intentionally cross-tenant, or in
+// INTENTIONALLY_UNSCOPED), opt out with `// biome-ignore lint/plugin: <reason>`
+// on the line above the filter. (Biome 2.5 groups all plugin diagnostics under
+// the `lint/plugin` suppression category — there is no per-rule selector.)
+language js
+
+`$client.$model.$method($args)` where {
+  $client <: or {
+    `ctx.db`,
+    `ctx.prisma`,
+    `ctx.scopedPrisma`
+  },
+  $method <: or {
+    `findFirst`,
+    `findMany`,
+    `findUnique`,
+    `findFirstOrThrow`,
+    `findUniqueOrThrow`,
+    `count`,
+    `aggregate`,
+    `groupBy`,
+    `update`,
+    `updateMany`,
+    `delete`,
+    `deleteMany`,
+    `upsert`
+  },
+  $args <: contains `where: $where`,
+  $where <: contains or {
+    `orgId: $value`,
+    `projectId: $value`
+  } as $hit,
+  register_diagnostic(span=$hit, message="Do not hand-filter `orgId`/`projectId` in a Prisma where clause — rely on the scoped Prisma client (ctx.db / ScopedPrismaClient), which auto-scopes every model in ORG_TENANT_MODELS / PROJECT_TENANT_MODELS. If this uses the unscoped `prisma` singleton (seed/auth/system) or is intentionally cross-tenant, suppress with a biome-ignore explaining why.", severity="error")
+}

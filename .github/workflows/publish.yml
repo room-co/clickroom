@@ -1,0 +1,74 @@
+name: Publish SDKs
+
+on:
+  push:
+    tags:
+      - 'sdk-v*'
+  workflow_dispatch:
+
+# `id-token: write` lets npm attach a signed provenance statement (--provenance) tying each
+# tarball to this workflow run.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Build & publish @clickroom SDKs
+    runs-on: ubuntu-latest
+    # Forks must never publish under our npm scope. Only the public room-co/clickroom repo publishes.
+    if: github.repository == 'room-co/clickroom'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @clickroom/sdk-js build
+      - run: pnpm --filter @clickroom/sdk-js test
+      - name: Publish @clickroom/sdk-js
+        run: |
+          version=$(node -p "require('./packages/sdk-js/package.json').version")
+          if npm view "@clickroom/sdk-js@$version" version >/dev/null 2>&1; then
+            echo "@clickroom/sdk-js@$version already published, skipping"
+          else
+            pnpm --filter @clickroom/sdk-js publish --access public --no-git-checks --provenance
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # sdk-node depends on sdk-js via workspace:*, which pnpm rewrites to the exact
+      # version above — so it can only be published after sdk-js is on the registry.
+      - run: pnpm --filter @clickroom/sdk-node build
+      - run: pnpm --filter @clickroom/sdk-node test
+      - name: Publish @clickroom/sdk-node
+        run: |
+          version=$(node -p "require('./packages/sdk-node/package.json').version")
+          if npm view "@clickroom/sdk-node@$version" version >/dev/null 2>&1; then
+            echo "@clickroom/sdk-node@$version already published, skipping"
+          else
+            pnpm --filter @clickroom/sdk-node publish --access public --no-git-checks --provenance
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      # sdk-react-native depends on sdk-js via workspace:*, which pnpm rewrites to the exact
+      # version above — so it can only be published after sdk-js is on the registry.
+      - run: pnpm --filter @clickroom/sdk-react-native build
+      - run: pnpm --filter @clickroom/sdk-react-native test
+      - name: Publish @clickroom/sdk-react-native
+        run: |
+          version=$(node -p "require('./packages/sdk-react-native/package.json').version")
+          if npm view "@clickroom/sdk-react-native@$version" version >/dev/null 2>&1; then
+            echo "@clickroom/sdk-react-native@$version already published, skipping"
+          else
+            pnpm --filter @clickroom/sdk-react-native publish --access public --no-git-checks --provenance
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

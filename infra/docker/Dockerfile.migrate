@@ -1,0 +1,133 @@
+# syntax=docker/dockerfile:1
+#
+# Schema + reference-data bootstrap image — run as a one-off ECS Fargate task
+# (compute-stack `MigrateTaskDef`) on EVERY deploy, before the services roll.
+# Build context MUST be the repo root:
+#
+#   docker build -f infra/docker/Dockerfile.migrate -t clickroom/migrate .
+#
+# Portable by default: reads a plain DATABASE_URL (+ CLICKHOUSE_URL) and does no TLS
+# unless the URL asks for it. The hosted AWS deployment builds with
+# `--build-arg WITH_RDS_CA=true` (Amazon RDS roots in the system trust store) and keeps
+# its DB_HOST/DB_USER/DB_PASSWORD + sslmode=require&sslaccept=strict behaviour — see
+# migrate-entrypoint.sh. The same image also serves as the self-host admin CLI
+# (`docker compose run --rm cli pnpm admin:create`) since it ships the full workspace + tsx.
+ARG WITH_RDS_CA=false
+#
+# Why this exists as its own image rather than reusing apps/api's:
+#   apps/api/Dockerfile:64 prunes the runtime image with `pnpm deploy --prod`, and both
+#   bootstrap runners are TypeScript invoked through `tsx` (`packages/db` seeds and
+#   `packages/clickhouse/src/migrate.ts`). Rather than compile a parallel `dist/` entrypoint
+#   and risk it drifting from what `make migrate` actually runs in dev, this image keeps the
+#   full (dev-dep-inclusive) install and calls the *exact same pnpm scripts* the Makefile
+#   calls — so prod bootstrap and local bootstrap are literally the same commands.
+#
+# It is deliberately NOT a service image: no port, no long-running process. It starts,
+# runs infra/docker/migrate-entrypoint.sh, and exits. CI asserts exit code 0.
+
+FROM node:24-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+# COREPACK_HOME must be an explicit shared path, not the default (~/.cache/node/corepack).
+# `corepack prepare` runs here as root, but the task runs as `clickroom` (see USER below) with a
+# different $HOME — so with the default location the cached pnpm is invisible at run time and
+# corepack silently tries to re-download it from registry.npmjs.org. The Fargate task has no
+# egress (private subnet, assignPublicIp=DISABLED), so that fetch hangs until ETIMEDOUT and the
+# migration dies before it ever reaches Postgres.
+ENV COREPACK_HOME="/corepack"
+RUN corepack enable \
+    && corepack prepare pnpm@9.15.0 --activate \
+    && chmod -R a+rX "$COREPACK_HOME"
+
+# ── RDS CA bundle ─────────────────────────────────────────────────────────
+# Same trust anchor as apps/api (see that Dockerfile): prod RDS runs `rds.force_ssl=1` and
+# packages/db verifies the server certificate against Amazon's global bundle instead of
+# trusting it blindly. `seed:plans` goes through packages/db's PrismaClient, so without this
+# file the seed step would throw at boot in production (`resolveTls`, client.ts) — which is
+# the intended behaviour, but it would also mean the task could never succeed.
+FROM base AS rds-ca-true
+RUN apk add --no-cache ca-certificates curl \
+    && mkdir -p /etc/ssl/rds \
+    && curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+       -o /etc/ssl/rds/global-bundle.pem \
+    && grep -q "BEGIN CERTIFICATE" /etc/ssl/rds/global-bundle.pem
+
+# Portable variant: empty directory.
+FROM base AS rds-ca-false
+RUN mkdir -p /etc/ssl/rds
+
+FROM rds-ca-${WITH_RDS_CA} AS rds-ca
+
+# ── Pruner ────────────────────────────────────────────────────────────────
+# Only @clickroom/db and @clickroom/clickhouse (plus their workspace deps) are needed —
+# the whole api/web tree is dead weight here.
+FROM base AS pruner
+WORKDIR /app
+COPY . .
+RUN pnpm dlx turbo@2.3.3 prune @clickroom/db @clickroom/clickhouse --docker
+
+# ── Runtime ───────────────────────────────────────────────────────────────
+# No `--prod` prune and no separate slim stage on purpose: `tsx` (which both runners are
+# invoked through) and the Prisma CLI must be present at run time. This image is pulled once
+# per deploy by a task that lives for well under a minute, so image size is not a constraint
+# worth trading correctness for.
+FROM base AS runner
+WORKDIR /app
+
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+COPY --from=pruner /app/out/full/ .
+
+# Generate the Prisma client for the Linux container target. `seed:plans` imports
+# packages/db/src/client.ts, which instantiates PrismaClient at module load.
+RUN pnpm --filter @clickroom/db prisma:generate
+
+# The two runners are invoked through tsx and so need no build of their own — but their
+# *cross-package* imports do. `seed:plans` → packages/db/src/seed.ts → `@clickroom/auth`, which
+# resolves through that package's "main": ./dist/index.js. Nothing in a pruned install emits that
+# dist, so without this the seed dies at import time with ERR_MODULE_NOT_FOUND. Build the whole
+# pruned workspace rather than naming @clickroom/auth: this stays correct if db or clickhouse ever
+# picks up another workspace dep. Must run after prisma:generate — @clickroom/db's own tsc build
+# typechecks against the generated client.
+RUN pnpm -r build
+
+COPY --from=rds-ca /etc/ssl/rds/ /etc/ssl/rds/
+
+# The RDS roots must also live in the SYSTEM trust store, because step 1 (`prisma migrate deploy`)
+# cannot use the bundle above. It runs on Prisma's Rust engine, whose `sslcert` param is read with
+# native_tls::Certificate::from_pem — that parses only the FIRST PEM block of the file, and the
+# first cert in Amazon's global bundle is an *sa-east-1* root. The engine would therefore verify a
+# us-east-1 chain against one wrong root and fail with "self-signed certificate in certificate
+# chain" (P1011). Quaint only ever *adds* to the system roots, so loading them here and passing no
+# `sslcert` gives it all 100+ RDS roots. Steps 2-3 go through node-postgres, which reads the
+# multi-cert bundle correctly and is unaffected.
+#
+# (Only when WITH_RDS_CA=true — the build fails here, not at deploy, if the
+# root that signs our RDS instance is missing.)
+#
+# Split per cert first: Alpine's update-ca-certificates hash-links only the first cert of a
+# multi-cert file, so handing it the bundle whole would reintroduce the same bug one layer down.
+RUN if [ -s /etc/ssl/rds/global-bundle.pem ]; then \
+    apk add --no-cache ca-certificates openssl \
+    && mkdir -p /usr/local/share/ca-certificates \
+    && awk '/BEGIN CERT/{n++} {print > sprintf("/usr/local/share/ca-certificates/aws-rds-%03d.crt", n)}' \
+       /etc/ssl/rds/global-bundle.pem \
+    && update-ca-certificates \
+    && openssl crl2pkcs7 -nocrl -certfile /etc/ssl/certs/ca-certificates.crt \
+       | openssl pkcs7 -print_certs -noout \
+       | grep -q "CN=Amazon RDS us-east-1 Root CA RSA2048 G1"; \
+    fi
+
+COPY infra/docker/migrate-entrypoint.sh /usr/local/bin/migrate-entrypoint.sh
+RUN chmod +x /usr/local/bin/migrate-entrypoint.sh
+
+# Non-root, and it owns /app because pnpm/tsx/prisma all write scratch state under it.
+RUN addgroup -S clickroom && adduser -S clickroom -G clickroom \
+    && chown -R clickroom:clickroom /app
+USER clickroom
+
+CMD ["/usr/local/bin/migrate-entrypoint.sh"]

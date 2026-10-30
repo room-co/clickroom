@@ -1,0 +1,39 @@
+[package]
+name = "capture"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "capture"
+path = "src/main.rs"
+
+[dependencies]
+tokio.workspace = true
+axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+anyhow.workspace = true
+async-nats = "0.49.1"
+redis = { version = "1.3.0", default-features = false, features = ["tokio-comp", "connection-manager", "script", "tokio-rustls-comp", "tls-rustls-webpki-roots"] }
+uuid = { version = "1.23.4", features = ["v4", "v7", "serde"] }
+# Presigned PUT URLs for support-ticket attachments.
+# `aws-config` supplies the credential/region provider chain so the same code
+# path works against LocalStack (static env creds) in dev and the ECS task role
+# in prod; `aws-sdk-s3` does the actual presigning (no HTTP call is made).
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-s3 = "1"
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "serde", "std"] }
+sha2 = "0.11.0"
+sha1 = "0.10.6"
+hex = "0.4.3"
+thiserror = "2.0.18"
+dotenvy = "0.15.7"
+tower = "0.5.3"
+tower-http = { version = "0.7.0", features = ["cors", "limit"] }
+futures = "0.3.32"
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+schema-validate = { path = "../schema-validate" }

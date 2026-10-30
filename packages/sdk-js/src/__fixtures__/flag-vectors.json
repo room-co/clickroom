@@ -1,0 +1,1996 @@
+{
+  "_comment": "parity fixture. hash(key,distinct_id,salt)=int(sha1hex(key+\".\"+distinct_id+salt)[0:15])/0xFFFFFFFFFFFFFFF. Rust(09) + SDK(10.A) must match expected enabled/variant/payload. GENERATED — do not hand-edit.",
+  "vectors": [
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_3",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_4",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_5",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "alice",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "bob",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "carol",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "dave",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-30",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 30,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "erin",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_3",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_4",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_5",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "alice",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "bob",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "carol",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "dave",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-100",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "erin",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_3",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_4",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_5",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "alice",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "bob",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "carol",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "dave",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "boolean-0",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 0,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "erin",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_3",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_4",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_5",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "alice",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "bob",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "carol",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "dave",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "inactive",
+        "active": false,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "erin",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "test",
+        "payload": {
+          "color": "green"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "control",
+        "payload": {
+          "color": "blue"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "u_3",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "test",
+        "payload": {
+          "color": "green"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "u_4",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "control",
+        "payload": {
+          "color": "blue"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "u_5",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "test",
+        "payload": {
+          "color": "green"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "alice",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "control",
+        "payload": {
+          "color": "blue"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "bob",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "test",
+        "payload": {
+          "color": "green"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "carol",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "test",
+        "payload": {
+          "color": "green"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "dave",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "test",
+        "payload": {
+          "color": "green"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "banner-color",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ],
+          "multivariate": {
+            "variants": [
+              {
+                "key": "control",
+                "rollout_percentage": 50
+              },
+              {
+                "key": "test",
+                "rollout_percentage": 50
+              }
+            ]
+          },
+          "payloads": {
+            "control": {
+              "color": "blue"
+            },
+            "test": {
+              "color": "green"
+            }
+          }
+        }
+      },
+      "distinct_id": "erin",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": "control",
+        "payload": {
+          "color": "blue"
+        }
+      }
+    },
+    {
+      "flag": {
+        "key": "plan-target",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "exact",
+                  "value": "pro"
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "pro"
+      },
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "plan-target",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "exact",
+                  "value": "pro"
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "free"
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "plan-target",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "exact",
+                  "value": "pro"
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "ops-mix",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "is_not",
+                  "value": "free"
+                },
+                {
+                  "key": "email",
+                  "operator": "icontains",
+                  "value": "@acme.com"
+                },
+                {
+                  "key": "age",
+                  "operator": "gt",
+                  "value": 18
+                },
+                {
+                  "key": "score",
+                  "operator": "lt",
+                  "value": 100
+                },
+                {
+                  "key": "country",
+                  "operator": "is_set",
+                  "value": null
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "pro",
+        "email": "x@acme.com",
+        "age": 30,
+        "score": 50,
+        "country": "US"
+      },
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "ops-mix",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "is_not",
+                  "value": "free"
+                },
+                {
+                  "key": "email",
+                  "operator": "icontains",
+                  "value": "@acme.com"
+                },
+                {
+                  "key": "age",
+                  "operator": "gt",
+                  "value": 18
+                },
+                {
+                  "key": "score",
+                  "operator": "lt",
+                  "value": 100
+                },
+                {
+                  "key": "country",
+                  "operator": "is_set",
+                  "value": null
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "free",
+        "email": "x@acme.com",
+        "age": 30,
+        "score": 50,
+        "country": "US"
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "ops-mix",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "is_not",
+                  "value": "free"
+                },
+                {
+                  "key": "email",
+                  "operator": "icontains",
+                  "value": "@acme.com"
+                },
+                {
+                  "key": "age",
+                  "operator": "gt",
+                  "value": 18
+                },
+                {
+                  "key": "score",
+                  "operator": "lt",
+                  "value": 100
+                },
+                {
+                  "key": "country",
+                  "operator": "is_set",
+                  "value": null
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "pro",
+        "email": "x@other.com",
+        "age": 30,
+        "score": 50,
+        "country": "US"
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "ops-mix",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "is_not",
+                  "value": "free"
+                },
+                {
+                  "key": "email",
+                  "operator": "icontains",
+                  "value": "@acme.com"
+                },
+                {
+                  "key": "age",
+                  "operator": "gt",
+                  "value": 18
+                },
+                {
+                  "key": "score",
+                  "operator": "lt",
+                  "value": 100
+                },
+                {
+                  "key": "country",
+                  "operator": "is_set",
+                  "value": null
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "pro",
+        "email": "x@acme.com",
+        "age": 12,
+        "score": 50,
+        "country": "US"
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "ops-mix",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "is_not",
+                  "value": "free"
+                },
+                {
+                  "key": "email",
+                  "operator": "icontains",
+                  "value": "@acme.com"
+                },
+                {
+                  "key": "age",
+                  "operator": "gt",
+                  "value": 18
+                },
+                {
+                  "key": "score",
+                  "operator": "lt",
+                  "value": 100
+                },
+                {
+                  "key": "country",
+                  "operator": "is_set",
+                  "value": null
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "pro",
+        "email": "x@acme.com",
+        "age": 30,
+        "score": 150,
+        "country": "US"
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "ops-mix",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "is_not",
+                  "value": "free"
+                },
+                {
+                  "key": "email",
+                  "operator": "icontains",
+                  "value": "@acme.com"
+                },
+                {
+                  "key": "age",
+                  "operator": "gt",
+                  "value": 18
+                },
+                {
+                  "key": "score",
+                  "operator": "lt",
+                  "value": 100
+                },
+                {
+                  "key": "country",
+                  "operator": "is_set",
+                  "value": null
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "pro",
+        "email": "x@acme.com",
+        "age": 30,
+        "score": 50
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-off-rule",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "exact",
+                  "value": "internal"
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": false
+            },
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "internal"
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-off-rule",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "exact",
+                  "value": "internal"
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": false
+            },
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {
+        "plan": "pro"
+      },
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-off-rule",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [
+                {
+                  "key": "plan",
+                  "operator": "exact",
+                  "value": "internal"
+                }
+              ],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": false
+            },
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {
+        "plan": "internal"
+      },
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-default-on",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-absent-legacy",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_1",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-rollout",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 10,
+              "variant": null,
+              "serve": false
+            },
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-rollout",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 10,
+              "variant": null,
+              "serve": false
+            },
+            {
+              "properties": [],
+              "rollout_percentage": 100,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_3",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-rollout",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 10,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_2",
+      "person_properties": {},
+      "expected": {
+        "enabled": true,
+        "variant": null,
+        "payload": null
+      }
+    },
+    {
+      "flag": {
+        "key": "serve-rollout",
+        "active": true,
+        "filters": {
+          "groups": [
+            {
+              "properties": [],
+              "rollout_percentage": 10,
+              "variant": null,
+              "serve": true
+            }
+          ]
+        }
+      },
+      "distinct_id": "u_3",
+      "person_properties": {},
+      "expected": {
+        "enabled": false,
+        "variant": null,
+        "payload": null
+      }
+    }
+  ]
+}

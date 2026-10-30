@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.turbo/
+target/
+
+# Rust
+services/**/target/
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.e2e
+
+# Editor / OS
+.DS_Store
+*.log
+
+# Test / coverage
+coverage/
+test-results/
+playwright-report/
+
+# Vite
+apps/web/.vite/
+
+# TS incremental build info
+*.tsbuildinfo
+node_modules
+
+# Makefile dev process state
+.dev/
+.e2e/
+
+
+# Local agent/editor config
+.codex/

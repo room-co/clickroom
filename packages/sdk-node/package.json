@@ -1,0 +1,60 @@
+{
+  "name": "@clickroom/sdk-node",
+  "version": "0.1.0",
+  "description": "Node.js server SDK for Clickroom — product analytics, feature flags and experiments.",
+  "license": "MIT",
+  "homepage": "https://github.com/room-co/clickroom/tree/main/packages/sdk-node#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/room-co/clickroom.git",
+    "directory": "packages/sdk-node"
+  },
+  "bugs": {
+    "url": "https://github.com/room-co/clickroom/issues"
+  },
+  "keywords": [
+    "analytics",
+    "product-analytics",
+    "feature-flags",
+    "experiments",
+    "ab-testing",
+    "clickroom",
+    "node"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@clickroom/sdk-js": "workspace:*"
+  },
+  "devDependencies": {
+    "@clickroom/config": "workspace:*",
+    "@types/node": "22.20.0",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.9"
+  }
+}

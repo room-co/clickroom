@@ -1,0 +1,38 @@
+{
+  "name": "clickroom",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "prepare": "lefthook install || true",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "admin:create": "pnpm --filter @clickroom/db admin:create",
+    "user:reset-password": "pnpm --filter @clickroom/db user:reset-password",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "e2e:up": "make up:e2e",
+    "e2e:down": "make down:e2e",
+    "test:e2e": "pnpm --filter @clickroom/web test:e2e",
+    "test:e2e:headed": "pnpm --filter @clickroom/web test:e2e:headed"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.1",
+    "http-proxy-3": "^1.23.2",
+    "lefthook": "1.10.10",
+    "turbo": "2.3.3",
+    "typescript": "5.7.3"
+  }
+}

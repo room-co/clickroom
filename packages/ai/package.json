@@ -1,0 +1,31 @@
+{
+  "name": "@clickroom/ai",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@clickroom/config": "workspace:*",
+    "@types/node": "^26.1.0",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.84",
+    "@ai-sdk/google": "^3.0.82",
+    "@ai-sdk/openai": "^3.0.71",
+    "@ai-sdk/react": "3.0.210",
+    "ai": "^6.0.204",
+    "zod": "^4.0.0"
+  }
+}

@@ -1,0 +1,97 @@
+name: Release
+
+# Tag `vX.Y.Z` -> multi-arch images on GHCR + a GitHub Release.
+# SDK packages are released separately by publish.yml (`sdk-v*` tags).
+#
+# Images:  ghcr.io/room-co/clickroom-{api,capture,ingest,query,web,admin,migrate}
+# Tags:    vX.Y.Z, X.Y, latest (latest/X.Y are skipped for pre-releases like v0.2.0-rc.1)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: Image (${{ matrix.image }})
+    # Forks have no GHCR namespace of ours; never publish from them.
+    if: github.repository == 'room-co/clickroom'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # cosign keyless signing + provenance
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: api, file: apps/api/Dockerfile }
+          - { image: capture, file: services/capture/Dockerfile }
+          - { image: ingest, file: services/ingest/Dockerfile }
+          - { image: query, file: services/query/Dockerfile }
+          - { image: web, file: apps/web/Dockerfile }
+          - { image: admin, file: apps/admin/Dockerfile }
+          - { image: migrate, file: infra/docker/Dockerfile.migrate }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/clickroom-${{ matrix.image }}
+          tags: |
+            type=semver,pattern=v{{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
+          labels: |
+            org.opencontainers.image.licenses=AGPL-3.0-only
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          # Rust cargo-chef builds are slow, especially under QEMU: cache per image in GHCR.
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/clickroom-${{ matrix.image }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/clickroom-${{ matrix.image }}:buildcache,mode=max
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign image (keyless)
+        run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/clickroom-${{ matrix.image }}@${{ steps.build.outputs.digest }}"
+
+  github-release:
+    name: GitHub Release
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --generate-notes $flags \
+            --notes-start-tag "$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)" \
+            || gh release create "$GITHUB_REF_NAME" --generate-notes $flags

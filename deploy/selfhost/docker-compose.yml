@@ -1,0 +1,334 @@
+# Clickroom self-host stack — one VM, one compose file.
+#
+#   cp .env.example .env   (or run ./install.sh, which generates every secret for you)
+#   docker compose up -d
+#
+# Startup order: infra (healthy) -> migrate (one-shot, must exit 0) -> api/capture/ingest/query
+# -> web -> caddy. Everything extra is OFF by default; opt in with COMPOSE_PROFILES in .env:
+#   admin    admin console (own hostname, see ADMIN_SITE_ADDRESS)
+#   storage  Garage (S3) for support-ticket attachments (also set the SUPPORT_ATTACHMENTS_* block)
+#   tools    one-off CLI container (`docker compose run --rm cli ...`; always usable via run)
+# Images: ${CLICKROOM_REGISTRY}/clickroom-<name>:${CLICKROOM_VERSION}. Use docker-compose.build.yml
+# to build them from a checkout instead.
+
+# Distinct from the dev compose project ("clickroom") so volumes/containers never collide.
+name: clickroom-selfhost
+
+x-restart: &restart
+  restart: unless-stopped
+
+x-app-env: &app-env
+  NODE_ENV: production
+  CLICKROOM_DEPLOYMENT: self_host
+  DATABASE_URL: postgresql://clickroom:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/clickroom?schema=public
+  DB_TLS: disable
+  CLICKHOUSE_URL: http://clickhouse:8123
+  CLICKHOUSE_USER: clickroom
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+  CLICKHOUSE_DATABASE: clickroom
+  CLICKHOUSE_QUERY_USER: clickroom_query
+  CLICKHOUSE_QUERY_PASSWORD: ${CLICKHOUSE_QUERY_PASSWORD:?CLICKHOUSE_QUERY_PASSWORD is required}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379
+  NATS_URL: nats://nats:4222
+  QUOTA_ENFORCE: ${QUOTA_ENFORCE:-false}
+
+services:
+  # ── Data stores ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16.4-alpine
+    <<: *restart
+    environment:
+      POSTGRES_USER: clickroom
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: clickroom
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clickroom -d clickroom"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    <<: *restart
+    environment:
+      CLICKHOUSE_USER: clickroom
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?CLICKHOUSE_PASSWORD is required}
+      CLICKHOUSE_DB: clickroom
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ./clickhouse/memory.xml:/etc/clickhouse-server/config.d/memory.xml:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  nats:
+    image: nats:2.10.22-alpine
+    <<: *restart
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    volumes:
+      - nats-data:/data
+      - ./nats/nats-server.conf:/etc/nats/nats-server.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    <<: *restart
+    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --appendonly yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Bundled S3 for support attachments (profile `storage`). Single node, replication_factor 1.
+  # The image is `FROM scratch` (only /garage), hence the CLI-based healthcheck. Config lives in
+  # ./garage/garage.toml; secrets come from the environment.
+  # GARAGE_*/S3_* come from .env (install.sh generates them; empty => garage refuses to start).
+  garage:
+    image: dxflrs/garage:v2.5.0
+    <<: *restart
+    profiles: [storage]
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage-meta:/var/lib/garage/meta
+      - garage-data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  # One-shot, idempotent: assign the single-node layout, create the bucket, import the S3 key
+  # from .env, grant it read/write, and set bucket CORS (support widgets on customer sites PUT
+  # attachments cross-origin to presigned URLs). Safe to re-run; also used by backup/restore.
+  garage-init:
+    image: curlimages/curl:8.11.1
+    profiles: [storage]
+    user: root
+    restart: "no"
+    depends_on:
+      garage:
+        condition: service_healthy
+    environment:
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+      GARAGE_ADMIN_URL: http://garage:3903
+      GARAGE_S3_URL: http://garage:3900
+      S3_BUCKET: ${S3_BUCKET:-clickroom-attachments}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+    volumes:
+      - ./garage/init.sh:/init.sh:ro
+      # Mounted only so scripts/backup.sh + restore.sh can tar the Garage volumes with this image.
+      - garage-meta:/mnt/meta
+      - garage-data:/mnt/data
+    entrypoint: ["/bin/sh", "/init.sh"]
+
+  # ── Schema + reference data (one-shot) ───────────────────────────────────
+  migrate:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-migrate:${CLICKROOM_VERSION:-latest}
+    restart: "no"
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+
+  # ── Application services ─────────────────────────────────────────────────
+  api:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-api:${CLICKROOM_VERSION:-latest}
+    <<: *restart
+    environment:
+      <<: *app-env
+      API_PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
+      SSO_RELAY_STATE_SECRET: ${SSO_RELAY_STATE_SECRET:?SSO_RELAY_STATE_SECRET is required}
+      SSO_SECRETS_KEY: ${SSO_SECRETS_KEY:?SSO_SECRETS_KEY is required}
+      AI_ENCRYPTION_KEY: ${AI_ENCRYPTION_KEY:?AI_ENCRYPTION_KEY is required}
+      MCP_OAUTH_STATE_SECRET: ${MCP_OAUTH_STATE_SECRET:?MCP_OAUTH_STATE_SECRET is required}
+      INTERNAL_QUERY_SECRET: ${INTERNAL_QUERY_SECRET:?INTERNAL_QUERY_SECRET is required}
+      QUERY_SERVICE_URL: http://query:3002
+      WEB_PUBLIC_URL: ${CLICKROOM_PUBLIC_URL:?CLICKROOM_PUBLIC_URL is required}
+      MCP_OAUTH_ISSUER: ${CLICKROOM_PUBLIC_URL}
+      CORS_ORIGINS: ${CLICKROOM_PUBLIC_URL}
+      ADMIN_PUBLIC_URL: ${ADMIN_PUBLIC_URL:-http://admin.localhost}
+      SIGNUP_MODE: ${SIGNUP_MODE:-first_user_only}
+      ADMIN_PASSWORD_SINK: ${ADMIN_PASSWORD_SINK:-stdout}
+      # Optional first-boot admin (unset = create it with the CLI instead).
+      CLICKROOM_ADMIN_EMAIL:
+      CLICKROOM_ADMIN_PASSWORD:
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  capture:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-capture:${CLICKROOM_VERSION:-latest}
+    <<: *restart
+    environment:
+      CAPTURE_PORT: 3001
+      DATABASE_URL: postgresql://clickroom:${POSTGRES_PASSWORD}@postgres:5432/clickroom
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NATS_URL: nats://nats:4222
+      QUOTA_ENFORCE: ${QUOTA_ENFORCE:-false}
+      CAPTURE_STREAM_MAX_BYTES: ${CAPTURE_STREAM_MAX_BYTES:-16106127360}
+      # Support attachments: off unless a bucket is set (empty = unset). See .env.example.
+      SUPPORT_ATTACHMENTS_BUCKET: ${SUPPORT_ATTACHMENTS_BUCKET:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  ingest:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-ingest:${CLICKROOM_VERSION:-latest}
+    <<: *restart
+    environment:
+      DATABASE_URL: postgresql://clickroom:${POSTGRES_PASSWORD}@postgres:5432/clickroom
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NATS_URL: nats://nats:4222
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_USER: clickroom
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DATABASE: clickroom
+      AI_ENCRYPTION_KEY: ${AI_ENCRYPTION_KEY}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+
+  query:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-query:${CLICKROOM_VERSION:-latest}
+    <<: *restart
+    environment:
+      QUERY_PORT: 3002
+      INTERNAL_QUERY_SECRET: ${INTERNAL_QUERY_SECRET}
+      CLICKHOUSE_URL: http://clickhouse:8123
+      CLICKHOUSE_QUERY_USER: clickroom_query
+      CLICKHOUSE_QUERY_PASSWORD: ${CLICKHOUSE_QUERY_PASSWORD}
+      CLICKHOUSE_DATABASE: clickroom
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-web:${CLICKROOM_VERSION:-latest}
+    <<: *restart
+    environment:
+      CLICKROOM_API_ORIGIN: ""
+      CLICKROOM_CAPTURE_HOST: ${CLICKROOM_PUBLIC_URL}/capture
+      CLICKROOM_DEPLOYMENT: self_host
+      CLICKROOM_WRITE_KEY: ${CLICKROOM_WRITE_KEY:-}
+
+  admin:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-admin:${CLICKROOM_VERSION:-latest}
+    <<: *restart
+    profiles: [admin]
+    environment:
+      CLICKROOM_API_ORIGIN: ""
+      CLICKROOM_DEPLOYMENT: self_host
+
+  caddy:
+    image: caddy:2.8-alpine
+    <<: *restart
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-http://localhost}
+      ADMIN_SITE_ADDRESS: ${ADMIN_SITE_ADDRESS:-http://admin.localhost}
+      S3_BUCKET: ${S3_BUCKET:-clickroom-attachments}
+      CADDY_TRUSTED_PROXIES: ${CADDY_TRUSTED_PROXIES:-127.0.0.1/32}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
+      capture:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2019/config/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  # One-off CLI container (admin bootstrap, password reset). The migrate image ships the full
+  # workspace + tsx. Usage:
+  #   docker compose run --rm cli pnpm admin:create
+  #   docker compose run --rm cli pnpm user:reset-password --email you@example.com
+  cli:
+    image: ${CLICKROOM_REGISTRY:-ghcr.io/room-co}/clickroom-migrate:${CLICKROOM_VERSION:-latest}
+    profiles: [tools]
+    restart: "no"
+    entrypoint: []
+    command: ["sh"]
+    environment:
+      <<: *app-env
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:?ADMIN_JWT_SECRET is required}
+      ADMIN_PASSWORD_SINK: ${ADMIN_PASSWORD_SINK:-stdout}
+      SSO_SECRETS_KEY: ${SSO_SECRETS_KEY}
+      AI_ENCRYPTION_KEY: ${AI_ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      WEB_PUBLIC_URL: ${CLICKROOM_PUBLIC_URL}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
+  clickhouse-data:
+  nats-data:
+  redis-data:
+  garage-meta:
+  garage-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,84 @@
+{
+  "name": "@clickroom/sdk-react-native",
+  "version": "0.1.0",
+  "description": "React Native SDK for Clickroom — product analytics and feature flags for mobile apps.",
+  "license": "MIT",
+  "homepage": "https://github.com/room-co/clickroom/tree/main/packages/sdk-react-native#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/room-co/clickroom.git",
+    "directory": "packages/sdk-react-native"
+  },
+  "bugs": {
+    "url": "https://github.com/room-co/clickroom/issues"
+  },
+  "keywords": [
+    "analytics",
+    "product-analytics",
+    "feature-flags",
+    "experiments",
+    "ab-testing",
+    "clickroom",
+    "react-native",
+    "mobile"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "react-native": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "@clickroom/sdk-js": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-native": ">=0.73",
+    "@react-native-async-storage/async-storage": ">=1.19"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    },
+    "@react-native-async-storage/async-storage": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@clickroom/config": "workspace:*",
+    "@types/node": "22.20.0",
+    "@types/react": "^18.3.1",
+    "react": "18.3.1",
+    "typescript": "5.7.3",
+    "vitest": "^4.1.9"
+  }
+}

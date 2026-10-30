@@ -1,0 +1,15 @@
+{
+  "name": "@clickroom/config",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "files": [
+    "biome.json",
+    "tsconfig.base.json"
+  ],
+  "exports": {
+    "./biome": "./biome.json",
+    "./tsconfig": "./tsconfig.base.json"
+  }
+}
