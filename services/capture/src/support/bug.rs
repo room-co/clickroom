@@ -15,8 +15,8 @@
 //! 2. **Bounding.** Every string is truncated to the zod cap and both
 //!    arrays are truncated to 20 entries, keeping the NEWEST (the client appends
 //!    chronologically, so the tail is what matters when something just broke).
-//! 3. **Redaction, as the last line of defence.** The SDK redacts too
-//!, but client-side redaction is UX and bandwidth — never trust it.
+//! 3. **Redaction, as the last line of defence.** The SDK redacts too, but
+//!    client-side redaction is UX and bandwidth — never trust it.
 //!    Query-string *values* whose key looks credential-shaped are stripped, and
 //!    `Bearer …` / JWT-shaped runs are stripped from free-text messages.
 //!

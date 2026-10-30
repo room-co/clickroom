@@ -21,7 +21,7 @@ export const flagsChangedChannel = (projectId: string) => `flags:changed:${proje
 const CACHE_TTL_SECONDS = 86_400
 export const flagCacheKey = (projectId: string, env: string) => `flags:def:${projectId}:${env}`
 
-// : the blob shape written by TS on every flag write.
+// The blob shape written by TS on every flag write.
 export type FlagBlobEntry = {
   key: string
   active: boolean
