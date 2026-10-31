@@ -20,8 +20,16 @@ permissions:
   contents: read
 
 jobs:
+  # Gate: the full CI (lint, typecheck, tests, licences, secret scan, compose smoke test)
+  # must pass before any image is published.
+  ci:
+    name: CI
+    if: github.repository == 'room-co/clickroom'
+    uses: ./.github/workflows/ci.yml
+
   images:
     name: Image (${{ matrix.image }})
+    needs: ci
     # Forks have no GHCR namespace of ours; never publish from them.
     if: github.repository == 'room-co/clickroom'
     runs-on: ubuntu-latest

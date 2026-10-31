@@ -1,17 +1,17 @@
 name: CI
 
-# PRs only — no `push: branches: [main]`. Actions minutes are budgeted, and a push-to-main
-# run is redundant with the PR run that preceded it. NOTE: commits pushed directly to main
-# (bypassing a PR) get NO CI. `lefthook.yml` pre-commit covers biome + `pnpm -r typecheck` +
-# cargo fmt/clippy locally, but NOT `pnpm test`, `cargo test`, or `turbo run build` — run
-# `make test` before a direct-to-main push, or open a PR.
+# CI runs on RELEASES only, not on every commit or PR (Actions minutes are budgeted).
+# It is the gate in front of `release.yml`: a `v*` tag runs this workflow first, and no
+# image is published unless it passes. Run it by hand from the Actions tab at any time
+# (workflow_dispatch). `lefthook.yml` pre-commit covers biome + `pnpm -r typecheck` +
+# cargo fmt/clippy locally; run `make test` before pushing to main.
 on:
-  pull_request:
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   ts:
