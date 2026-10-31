@@ -36,8 +36,9 @@ make check   # typecheck + biome lint + cargo fmt/clippy
 
 - Formatter and linter is **Biome** (`pnpm lint`, `pnpm lint:fix`), not ESLint or Prettier.
 - `lefthook` runs biome, `pnpm -r typecheck`, `cargo fmt --check` and `cargo clippy` before each
-  commit. CI also runs build, tests, cargo deny, licence and secret scans, and a self-host compose
-  smoke test.
+  commit. Full CI (build, tests, cargo deny, licence and secret scans) runs on releases only,
+  not on every pull request, so run `make test` locally before you open one. After a release, the
+  published images are installed and checked end to end.
 - `apps/web` has no test runner: verify UI changes in the browser (375px, 768px, 1024px) plus
   typecheck and lint.
 
