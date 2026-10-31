@@ -5,7 +5,7 @@
 Please **do not open a public issue**. Report privately via either:
 
 - GitHub: the repository's **Security > Report a vulnerability** (private security advisory), or
-- Email: **security@<domain>** (placeholder until the project domain is final).
+- Email: **edi@waroom.co**.
 
 Include affected version (image tag or commit), reproduction steps and impact. We aim to acknowledge
 within 3 working days and to agree a fix and disclosure timeline with you. This is a

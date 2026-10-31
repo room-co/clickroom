@@ -25,8 +25,7 @@ Maintainers are responsible for clarifying and enforcing these standards and may
 reject contributions, and ban contributors, for behaviour they deem inappropriate. This applies in
 all project spaces and when representing the project in public.
 
-Report abuse privately to the maintainers at **conduct@<domain>** (placeholder until the project
-domain is final). All reports are reviewed promptly and fairly, and the reporter's privacy is
+Report abuse privately to the maintainers at **edi@waroom.co**. All reports are reviewed promptly and fairly, and the reporter's privacy is
 respected. Maintainers follow the
 [Enforcement Guidelines](https://www.contributor-covenant.org/version/2/1/code_of_conduct/#enforcement-guidelines)
 (correction, warning, temporary ban, permanent ban).
